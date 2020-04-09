@@ -1,33 +1,29 @@
 package ast;
 
 import java.io.StringWriter;
-import java.util.LinkedList;
 import java.util.List;
 
+import static util.StringUtil.nodeListToArray;
+
 public class InitListExpression extends BaseNode {
-    private BaseNode _typeNode;
-    private List<BaseNode> _nodes;
+    private final BaseNode typeNode;
+    private final List<BaseNode> nodes;
 
     public InitListExpression(BaseNode typeNode, List<BaseNode> nodes) {
         super(NodeType.InitListExpression);
-        _typeNode = typeNode;
-        _nodes = nodes;
+        this.typeNode = typeNode;
+        this.nodes = nodes;
     }
 
     @Override
-    public void PrintLeft(StringWriter writer) {
-        if (_typeNode != null) {
-            _typeNode.Print(writer);
+    public void printLeft(StringWriter writer) {
+        if (typeNode != null) {
+            typeNode.print(writer);
         }
 
         writer.write("{");
 
-        List<String> nodeStrings = new LinkedList<>();
-        for (BaseNode node : _nodes) {
-            nodeStrings.add(node.toString());
-        }
-        String[] nodeStringsArr = nodeStrings.toArray(new String[0]);
-        writer.write(String.join(", ", nodeStringsArr));
+        writer.write(String.join(", ", nodeListToArray(nodes)));
 
         writer.write("}");
     }

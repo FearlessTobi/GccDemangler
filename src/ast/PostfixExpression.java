@@ -3,18 +3,18 @@ package ast;
 import java.io.StringWriter;
 
 public class PostfixExpression extends ParentNode {
-    private String _operator;
+    private final String operator;
 
-    public PostfixExpression(BaseNode type, String Operator) {
+    public PostfixExpression(BaseNode type, String operator) {
         super(NodeType.PostfixExpression, type);
-        _operator = Operator;
+        this.operator = operator;
     }
 
     @Override
-    public void PrintLeft(StringWriter writer) {
+    public void printLeft(StringWriter writer) {
         writer.write("(");
-        child.Print(writer);
+        child.print(writer);
         writer.write(")");
-        writer.write(_operator);
+        writer.write(operator);
     }
 }

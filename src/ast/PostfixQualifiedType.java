@@ -3,16 +3,16 @@ package ast;
 import java.io.StringWriter;
 
 public class PostfixQualifiedType extends ParentNode {
-    private String _postfixQualifier;
+    private final String postfixQualifier;
 
     public PostfixQualifiedType(String postfixQualifier, BaseNode type) {
         super(NodeType.PostfixQualifiedType, type);
-        _postfixQualifier = postfixQualifier;
+        this.postfixQualifier = postfixQualifier;
     }
 
     @Override
-    public void PrintLeft(StringWriter writer) {
-        child.Print(writer);
-        writer.write(_postfixQualifier);
+    public void printLeft(StringWriter writer) {
+        child.print(writer);
+        writer.write(postfixQualifier);
     }
 }

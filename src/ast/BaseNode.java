@@ -3,52 +3,52 @@ package ast;
 import java.io.StringWriter;
 
 public abstract class BaseNode {
-    public NodeType Type;
+    public NodeType type;
 
-    public BaseNode(NodeType type) {
-        Type = type;
+    BaseNode(NodeType type) {
+        this.type = type;
     }
 
     //virtual
-    public void Print(StringWriter writer) {
-        PrintLeft(writer);
+    public void print(StringWriter writer) {
+        printLeft(writer);
 
-        if (HasRightPart()) {
-            PrintRight(writer);
+        if (hasRightPart()) {
+            printRight(writer);
         }
     }
 
-    public abstract void PrintLeft(StringWriter writer);
+    protected abstract void printLeft(StringWriter writer);
 
     //virtual
-    public boolean HasRightPart() {
+    boolean hasRightPart() {
         return false;
     }
 
     //virtual
-    public boolean IsArray() {
+    boolean isArray() {
         return false;
     }
 
     //virtual
-    public boolean HasFunctions() {
+    boolean hasFunctions() {
         return false;
     }
 
     //virtual
-    public String GetName() {
+    String getName() {
         return null;
     }
 
     //virtual
-    public void PrintRight(StringWriter writer) {
+    void printRight(StringWriter writer) {
     }
 
     @Override
     public String toString() {
         StringWriter writer = new StringWriter();
 
-        Print(writer);
+        print(writer);
 
         return writer.toString();
     }

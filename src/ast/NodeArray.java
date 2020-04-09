@@ -1,34 +1,30 @@
 package ast;
 
 import java.io.StringWriter;
-import java.util.LinkedList;
 import java.util.List;
 
+import static util.StringUtil.nodeListToArray;
+
 public class NodeArray extends BaseNode {
-    public List<BaseNode> Nodes;
+    public final List<BaseNode> nodes;
 
     public NodeArray(List<BaseNode> nodes) {
         super(NodeType.NodeArray);
-        Nodes = nodes;
+        this.nodes = nodes;
     }
 
     public NodeArray(List<BaseNode> nodes, NodeType type) {
         super(type);
-        Nodes = nodes;
+        this.nodes = nodes;
     }
 
     @Override
-    public boolean IsArray() {
+    public boolean isArray() {
         return true;
     }
 
     @Override
-    public void PrintLeft(StringWriter writer) {
-        List<String> nodeStrings = new LinkedList<>();
-        for(BaseNode node: Nodes){
-            nodeStrings.add(node.toString());
-        }
-        String[] nodeStringsArr = nodeStrings.toArray(new String[0]);
-        writer.write(String.join(", ", nodeStringsArr));
+    public void printLeft(StringWriter writer) {
+        writer.write(String.join(", ", nodeListToArray(nodes)));
     }
 }

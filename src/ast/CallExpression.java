@@ -1,30 +1,25 @@
 package ast;
 
 import java.io.StringWriter;
-import java.util.LinkedList;
 import java.util.List;
 
+import static util.StringUtil.nodeListToArray;
+
 public class CallExpression extends NodeArray {
-    private BaseNode _callee;
+    private final BaseNode callee;
 
     public CallExpression(BaseNode callee, List<BaseNode> nodes) {
         super(nodes, NodeType.CallExpression);
-        _callee = callee;
+        this.callee = callee;
     }
 
     @Override
-    public void PrintLeft(StringWriter writer) {
-        _callee.Print(writer);
+    public void printLeft(StringWriter writer) {
+        callee.print(writer);
 
         writer.write("(");
 
-        List<String> nodeStrings = new LinkedList<>();
-        for (BaseNode node : Nodes) {
-            nodeStrings.add(node.toString());
-        }
-        String[] nodeStringsArr = nodeStrings.toArray(new String[0]);
-
-        writer.write(String.join(", ", nodeStringsArr));
+        writer.write(String.join(", ", nodeListToArray(nodes)));
         writer.write(")");
     }
 }

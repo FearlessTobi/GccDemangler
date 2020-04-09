@@ -3,25 +3,25 @@ package ast;
 import java.io.StringWriter;
 
 public class ConditionalExpression extends BaseNode {
-    private BaseNode _thenNode;
-    private BaseNode _elseNode;
-    private BaseNode _conditionNode;
+    private final BaseNode thenNode;
+    private final BaseNode elseNode;
+    private final BaseNode conditionNode;
 
     public ConditionalExpression(BaseNode conditionNode, BaseNode thenNode, BaseNode elseNode) {
         super(NodeType.ConditionalExpression);
-        _thenNode = thenNode;
-        _conditionNode = conditionNode;
-        _elseNode = elseNode;
+        this.thenNode = thenNode;
+        this.conditionNode = conditionNode;
+        this.elseNode = elseNode;
     }
 
     @Override
-    public void PrintLeft(StringWriter writer) {
+    public void printLeft(StringWriter writer) {
         writer.write("(");
-        _conditionNode.Print(writer);
+        conditionNode.print(writer);
         writer.write(") ? (");
-        _thenNode.Print(writer);
+        thenNode.print(writer);
         writer.write(") : (");
-        _elseNode.Print(writer);
+        elseNode.print(writer);
         writer.write(")");
     }
 }

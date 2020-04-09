@@ -8,10 +8,10 @@ public class PackedTemplateParameterExpansion extends ParentNode {
     }
 
     @Override
-    public void PrintLeft(StringWriter writer) {
+    public void printLeft(StringWriter writer) {
         if (child instanceof PackedTemplateParameter) {
-            if (((PackedTemplateParameter) child).Nodes.size() != 0) {
-                child.Print(writer);
+            if (!((PackedTemplateParameter) child).nodes.isEmpty()) {
+                child.print(writer);
             }
         } else {
             writer.write("...");

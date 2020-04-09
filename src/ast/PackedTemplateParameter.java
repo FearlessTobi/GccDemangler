@@ -9,23 +9,23 @@ public class PackedTemplateParameter extends NodeArray {
     }
 
     @Override
-    public void PrintLeft(StringWriter writer) {
-        for (BaseNode node : Nodes) {
-            node.PrintLeft(writer);
+    public void printLeft(StringWriter writer) {
+        for (BaseNode node : nodes) {
+            node.printLeft(writer);
         }
     }
 
     @Override
-    public void PrintRight(StringWriter writer) {
-        for (BaseNode node : Nodes) {
-            node.PrintLeft(writer);
+    public void printRight(StringWriter writer) {
+        for (BaseNode node : nodes) {
+            node.printLeft(writer);
         }
     }
 
     @Override
-    public boolean HasRightPart() {
-        for (BaseNode node : Nodes) {
-            if (node.HasRightPart()) {
+    public boolean hasRightPart() {
+        for (BaseNode node : nodes) {
+            if (node.hasRightPart()) {
                 return true;
             }
         }

@@ -3,18 +3,18 @@ package ast;
 import java.io.StringWriter;
 
 public class PrefixExpression extends ParentNode {
-    private String _prefix;
+    private final String prefix;
 
     public PrefixExpression(String prefix, BaseNode child) {
         super(NodeType.PrefixExpression, child);
-        _prefix = prefix;
+        this.prefix = prefix;
     }
 
     @Override
-    public void PrintLeft(StringWriter writer) {
-        writer.write(_prefix);
+    public void printLeft(StringWriter writer) {
+        writer.write(prefix);
         writer.write("(");
-        child.Print(writer);
+        child.print(writer);
         writer.write(")");
     }
 }

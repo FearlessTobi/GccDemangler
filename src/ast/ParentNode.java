@@ -1,15 +1,15 @@
 package ast;
 
-public abstract class ParentNode extends BaseNode {
-    public BaseNode child;
+abstract class ParentNode extends BaseNode {
+    final BaseNode child;
 
-    public ParentNode(NodeType type, BaseNode child) {
+    ParentNode(NodeType type, BaseNode child) {
         super(type);
         this.child = child;
     }
 
     @Override
-    public String GetName() {
-        return child.GetName();
+    public String getName() {
+        return child.getName();
     }
 }

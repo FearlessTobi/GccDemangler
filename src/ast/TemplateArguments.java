@@ -1,9 +1,9 @@
 package ast;
 
 import java.io.StringWriter;
-import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
+
+import static util.StringUtil.nodeListToArray;
 
 public class TemplateArguments extends NodeArray {
     public TemplateArguments(List<BaseNode> nodes) {
@@ -11,20 +11,14 @@ public class TemplateArguments extends NodeArray {
     }
 
     @Override
-    public void PrintLeft(StringWriter writer) {
-        List<String> nodeStrings = new LinkedList<>();
-        for(BaseNode node: Nodes){
-            nodeStrings.add(node.toString());
-        }
-        String[] nodeStringsArr = nodeStrings.toArray(new String[0]);
-
-        String Params = String.join(", ", nodeStringsArr);
+    public void printLeft(StringWriter writer) {
+        String params = String.join(", ", nodeListToArray(nodes));
 
         writer.write("<");
 
-        writer.write(Params);
+        writer.write(params);
 
-        if (Params.endsWith(">")) {
+        if (params.endsWith(">")) {
             writer.write(" ");
         }
 

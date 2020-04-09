@@ -3,22 +3,22 @@ package ast;
 import java.io.StringWriter;
 
 public class NestedName extends ParentNode {
-    private BaseNode _name;
+    private final BaseNode name;
 
     public NestedName(BaseNode name, BaseNode type) {
         super(NodeType.NestedName, type);
-        _name = name;
+        this.name = name;
     }
 
     @Override
-    public String GetName() {
-        return _name.GetName();
+    public String getName() {
+        return name.getName();
     }
 
     @Override
-    public void PrintLeft(StringWriter writer) {
-        child.Print(writer);
+    public void printLeft(StringWriter writer) {
+        child.print(writer);
         writer.write("::");
-        _name.Print(writer);
+        name.print(writer);
     }
 }

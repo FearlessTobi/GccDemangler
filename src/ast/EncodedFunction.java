@@ -3,66 +3,66 @@ package ast;
 import java.io.StringWriter;
 
 public class EncodedFunction extends BaseNode {
-    private BaseNode _name;
-    private BaseNode _params;
-    private BaseNode _cv;
-    private BaseNode _ref;
-    private BaseNode _attrs;
-    private BaseNode _ret;
+    private final BaseNode name;
+    private final BaseNode params;
+    private final BaseNode cv;
+    private final BaseNode ref;
+    private final BaseNode attrs;
+    private final BaseNode ret;
 
-    public EncodedFunction(BaseNode name, BaseNode Params, BaseNode cv, BaseNode Ref, BaseNode attrs, BaseNode ret) {
+    public EncodedFunction(BaseNode name, BaseNode params, BaseNode cv, BaseNode ref, BaseNode attrs, BaseNode ret) {
         super(NodeType.NameType);
-        _name = name;
-        _params = Params;
-        _cv = cv;
-        _ref = Ref;
-        _attrs = attrs;
-        _ret = ret;
+        this.name = name;
+        this.params = params;
+        this.cv = cv;
+        this.ref = ref;
+        this.attrs = attrs;
+        this.ret = ret;
     }
 
     @Override
-    public void PrintLeft(StringWriter writer) {
-        if (_ret != null) {
-            _ret.PrintLeft(writer);
+    public void printLeft(StringWriter writer) {
+        if (ret != null) {
+            ret.printLeft(writer);
 
-            if (!_ret.HasRightPart()) {
+            if (!ret.hasRightPart()) {
                 writer.write(" ");
             }
         }
 
-        _name.Print(writer);
+        name.print(writer);
 
     }
 
     @Override
-    public boolean HasRightPart() {
+    public boolean hasRightPart() {
         return true;
     }
 
     @Override
-    public void PrintRight(StringWriter writer) {
+    public void printRight(StringWriter writer) {
         writer.write("(");
 
-        if (_params != null) {
-            _params.Print(writer);
+        if (params != null) {
+            params.print(writer);
         }
 
         writer.write(")");
 
-        if (_ret != null) {
-            _ret.PrintRight(writer);
+        if (ret != null) {
+            ret.printRight(writer);
         }
 
-        if (_cv != null) {
-            _cv.Print(writer);
+        if (cv != null) {
+            cv.print(writer);
         }
 
-        if (_ref != null) {
-            _ref.Print(writer);
+        if (ref != null) {
+            ref.print(writer);
         }
 
-        if (_attrs != null) {
-            _attrs.Print(writer);
+        if (attrs != null) {
+            attrs.print(writer);
         }
     }
 }

@@ -3,25 +3,25 @@ package ast;
 import java.io.StringWriter;
 
 public class NameType extends BaseNode {
-    private String _nameValue;
+    private final String nameValue;
 
     public NameType(String nameValue, NodeType type) {
         super(type);
-        _nameValue = nameValue;
+        this.nameValue = nameValue;
     }
 
     public NameType(String nameValue) {
         super(NodeType.NameType);
-        _nameValue = nameValue;
+        this.nameValue = nameValue;
     }
 
     @Override
-    public String GetName() {
-        return _nameValue;
+    public String getName() {
+        return nameValue;
     }
 
     @Override
-    public void PrintLeft(StringWriter writer) {
-        writer.write(_nameValue);
+    public void printLeft(StringWriter writer) {
+        writer.write(nameValue);
     }
 }

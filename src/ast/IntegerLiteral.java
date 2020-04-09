@@ -3,8 +3,8 @@ package ast;
 import java.io.StringWriter;
 
 public class IntegerLiteral extends BaseNode {
-    private String _literalName;
-    private String _literalValue;
+    private final String _literalName;
+    private final String _literalValue;
 
     public IntegerLiteral(String literalName, String literalValue) {
         super(NodeType.IntegerLiteral);
@@ -13,7 +13,7 @@ public class IntegerLiteral extends BaseNode {
     }
 
     @Override
-    public void PrintLeft(StringWriter writer) {
+    public void printLeft(StringWriter writer) {
         if (_literalName.length() > 3) {
             writer.write("(");
             writer.write(_literalName);

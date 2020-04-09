@@ -3,19 +3,19 @@ package ast;
 import java.io.StringWriter;
 
 public class QualifiedName extends BaseNode {
-    private BaseNode _qualifier;
-    private BaseNode _name;
+    private final BaseNode qualifier;
+    private final BaseNode name;
 
     public QualifiedName(BaseNode qualifier, BaseNode name) {
         super(NodeType.QualifiedName);
-        _qualifier = qualifier;
-        _name = name;
+        this.qualifier = qualifier;
+        this.name = name;
     }
 
     @Override
-    public void PrintLeft(StringWriter writer) {
-        _qualifier.Print(writer);
+    public void printLeft(StringWriter writer) {
+        qualifier.print(writer);
         writer.write("::");
-        _name.Print(writer);
+        name.print(writer);
     }
 }

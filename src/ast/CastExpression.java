@@ -3,24 +3,24 @@ package ast;
 import java.io.StringWriter;
 
 public class CastExpression extends BaseNode {
-    private String _kind;
-    private BaseNode _to;
-    private BaseNode _from;
+    private final String kind;
+    private final BaseNode to;
+    private final BaseNode from;
 
     public CastExpression(String kind, BaseNode to, BaseNode from) {
         super(NodeType.CastExpression);
-        _kind = kind;
-        _to = to;
-        _from = from;
+        this.kind = kind;
+        this.to = to;
+        this.from = from;
     }
 
     @Override
-    public void PrintLeft(StringWriter writer) {
-        writer.write(_kind);
+    public void printLeft(StringWriter writer) {
+        writer.write(kind);
         writer.write("<");
-        _to.PrintLeft(writer);
+        to.printLeft(writer);
         writer.write(">(");
-        _from.PrintLeft(writer);
+        from.printLeft(writer);
         writer.write(")");
     }
 }

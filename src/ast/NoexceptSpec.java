@@ -8,9 +8,9 @@ public class NoexceptSpec extends ParentNode {
     }
 
     @Override
-    public void PrintLeft(StringWriter writer) {
+    public void printLeft(StringWriter writer) {
         writer.write("noexcept(");
-        child.Print(writer);
+        child.print(writer);
         writer.write(")");
     }
 }

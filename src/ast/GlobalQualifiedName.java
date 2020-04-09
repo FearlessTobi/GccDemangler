@@ -8,8 +8,8 @@ public class GlobalQualifiedName extends ParentNode {
     }
 
     @Override
-    public void PrintLeft(StringWriter writer) {
+    public void printLeft(StringWriter writer) {
         writer.write("::");
-        child.Print(writer);
+        child.print(writer);
     }
 }

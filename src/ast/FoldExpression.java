@@ -3,39 +3,39 @@ package ast;
 import java.io.StringWriter;
 
 public class FoldExpression extends BaseNode {
-    private boolean _isLeftFold;
-    private String _operatorName;
-    private BaseNode _expression;
-    private BaseNode _initializer;
+    private final boolean isLeftFold;
+    private final String operatorName;
+    private final BaseNode expression;
+    private final BaseNode initializer;
 
     public FoldExpression(boolean isLeftFold, String operatorName, BaseNode expression, BaseNode initializer) {
         super(NodeType.FunctionParameter);
-        _isLeftFold = isLeftFold;
-        _operatorName = operatorName;
-        _expression = expression;
-        _initializer = initializer;
+        this.isLeftFold = isLeftFold;
+        this.operatorName = operatorName;
+        this.expression = expression;
+        this.initializer = initializer;
     }
 
     @Override
-    public void PrintLeft(StringWriter writer) {
+    public void printLeft(StringWriter writer) {
         writer.write("(");
 
-        if (_isLeftFold && _initializer != null) {
-            _initializer.Print(writer);
+        if (isLeftFold && initializer != null) {
+            initializer.print(writer);
             writer.write(" ");
-            writer.write(_operatorName);
+            writer.write(operatorName);
             writer.write(" ");
         }
 
-        writer.write(_isLeftFold ? "... " : " ");
-        writer.write(_operatorName);
-        writer.write(!_isLeftFold ? " ..." : " ");
-        _expression.Print(writer);
+        writer.write(isLeftFold ? "... " : " ");
+        writer.write(operatorName);
+        writer.write(!isLeftFold ? " ..." : " ");
+        expression.print(writer);
 
-        if (!_isLeftFold && _initializer != null) {
-            _initializer.Print(writer);
+        if (!isLeftFold && initializer != null) {
+            initializer.print(writer);
             writer.write(" ");
-            writer.write(_operatorName);
+            writer.write(operatorName);
             writer.write(" ");
         }
 

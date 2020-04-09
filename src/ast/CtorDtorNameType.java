@@ -3,19 +3,19 @@ package ast;
 import java.io.StringWriter;
 
 public class CtorDtorNameType extends ParentNode {
-    private boolean _isDestructor;
+    private final boolean isDestructor;
 
     public CtorDtorNameType(BaseNode name, boolean isDestructor) {
         super(NodeType.CtorDtorNameType, name);
-        _isDestructor = isDestructor;
+        this.isDestructor = isDestructor;
     }
 
     @Override
-    public void PrintLeft(StringWriter writer) {
-        if (_isDestructor) {
+    public void printLeft(StringWriter writer) {
+        if (isDestructor) {
             writer.write("~");
         }
 
-        writer.write(child.GetName());
+        writer.write(child.getName());
     }
 }

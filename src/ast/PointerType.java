@@ -3,26 +3,26 @@ package ast;
 import java.io.StringWriter;
 
 public class PointerType extends BaseNode {
-    private BaseNode _child;
+    private final BaseNode child;
 
     public PointerType(BaseNode child) {
         super(NodeType.PointerType);
-        _child = child;
+        this.child = child;
     }
 
     @Override
-    public boolean HasRightPart() {
-        return _child.HasRightPart();
+    public boolean hasRightPart() {
+        return child.hasRightPart();
     }
 
     @Override
-    public void PrintLeft(StringWriter writer) {
-        _child.PrintLeft(writer);
-        if (_child.IsArray()) {
+    public void printLeft(StringWriter writer) {
+        child.printLeft(writer);
+        if (child.isArray()) {
             writer.write(" ");
         }
 
-        if (_child.IsArray() || _child.HasFunctions()) {
+        if (child.isArray() || child.hasFunctions()) {
             writer.write("(");
         }
 
@@ -30,11 +30,11 @@ public class PointerType extends BaseNode {
     }
 
     @Override
-    public void PrintRight(StringWriter writer) {
-        if (_child.IsArray() || _child.HasFunctions()) {
+    public void printRight(StringWriter writer) {
+        if (child.isArray() || child.hasFunctions()) {
             writer.write(")");
         }
 
-        _child.PrintRight(writer);
+        child.printRight(writer);
     }
 }

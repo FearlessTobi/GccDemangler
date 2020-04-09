@@ -3,55 +3,55 @@ package ast;
 import java.io.StringWriter;
 
 public class FunctionType extends BaseNode {
-    private BaseNode _returnType;
-    private BaseNode _params;
-    private BaseNode _cvQualifier;
-    private SimpleReferenceType _referenceQualifier;
-    private BaseNode _exceptionSpec;
+    private final BaseNode returnType;
+    private final BaseNode params;
+    private final BaseNode cvQualifier;
+    private final SimpleReferenceType referenceQualifier;
+    private final BaseNode exceptionSpec;
 
-    public FunctionType(BaseNode returnType, BaseNode Params, BaseNode cvQualifier, SimpleReferenceType referenceQualifier, BaseNode exceptionSpec) {
+    public FunctionType(BaseNode returnType, BaseNode params, BaseNode cvQualifier, SimpleReferenceType referenceQualifier, BaseNode exceptionSpec) {
         super(NodeType.FunctionType);
-        _returnType = returnType;
-        _params = Params;
-        _cvQualifier = cvQualifier;
-        _referenceQualifier = referenceQualifier;
-        _exceptionSpec = exceptionSpec;
+        this.returnType = returnType;
+        this.params = params;
+        this.cvQualifier = cvQualifier;
+        this.referenceQualifier = referenceQualifier;
+        this.exceptionSpec = exceptionSpec;
     }
 
     @Override
-    public void PrintLeft(StringWriter writer) {
-        _returnType.PrintLeft(writer);
+    public void printLeft(StringWriter writer) {
+        returnType.printLeft(writer);
         writer.write(" ");
     }
 
     @Override
-    public void PrintRight(StringWriter writer) {
+    public void printRight(StringWriter writer) {
         writer.write("(");
-        _params.Print(writer);
+        params.print(writer);
         writer.write(")");
 
-        _returnType.PrintRight(writer);
+        returnType.printRight(writer);
 
-        _cvQualifier.Print(writer);
+        cvQualifier.print(writer);
 
-        if (_referenceQualifier.Qualifier != Reference.None) {
+        if (referenceQualifier.qualifier != Reference.None) {
             writer.write(" ");
-            _referenceQualifier.PrintQualifier(writer);
+            referenceQualifier.PrintQualifier(writer);
         }
 
-        if (_exceptionSpec != null) {
+        if (exceptionSpec != null) {
             writer.write(" ");
-            _exceptionSpec.Print(writer);
+            exceptionSpec.print(writer);
         }
     }
 
     @Override
-    public boolean HasRightPart() {
+    public boolean hasRightPart() {
         return true;
     }
 
     @Override
-    public boolean HasFunctions() {
+    public boolean hasFunctions() {
         return true;
     }
 }

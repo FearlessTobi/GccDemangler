@@ -3,27 +3,27 @@ package ast;
 import java.io.StringWriter;
 
 public class DeleteExpression extends ParentNode {
-    private boolean _isGlobal;
-    private boolean _isArrayExpression;
+    private final boolean isGlobal;
+    private final boolean isArrayExpression;
 
     public DeleteExpression(BaseNode child, boolean isGlobal, boolean isArrayExpression) {
         super(NodeType.DeleteExpression, child);
-        _isGlobal = isGlobal;
-        _isArrayExpression = isArrayExpression;
+        this.isGlobal = isGlobal;
+        this.isArrayExpression = isArrayExpression;
     }
 
     @Override
-    public void PrintLeft(StringWriter writer) {
-        if (_isGlobal) {
+    public void printLeft(StringWriter writer) {
+        if (isGlobal) {
             writer.write("::");
         }
 
         writer.write("delete");
 
-        if (_isArrayExpression) {
+        if (isArrayExpression) {
             writer.write("[] ");
         }
 
-        child.Print(writer);
+        child.print(writer);
     }
 }

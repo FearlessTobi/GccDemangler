@@ -12,26 +12,26 @@ public class SpecialSubstitution extends BaseNode {
         IOStream
     }
 
-    private SpecialType _specialSubstitutionKey;
+    private final SpecialType specialSubstitutionKey;
 
     public SpecialSubstitution(SpecialType specialSubstitutionKey) {
         super(NodeType.SpecialSubstitution);
-        _specialSubstitutionKey = specialSubstitutionKey;
+        this.specialSubstitutionKey = specialSubstitutionKey;
     }
 
     public void SetExtended() {
-        Type = NodeType.ExpandedSpecialSubstitution;
+        type = NodeType.ExpandedSpecialSubstitution;
     }
 
     @Override
-    public String GetName() {
-        switch (_specialSubstitutionKey) {
+    String getName() {
+        switch (specialSubstitutionKey) {
             case Allocator:
                 return "allocator";
             case BasicString:
                 return "basic_string";
             case String:
-                if (Type == NodeType.ExpandedSpecialSubstitution) {
+                if (type == NodeType.ExpandedSpecialSubstitution) {
                     return "basic_string";
                 }
 
@@ -49,7 +49,7 @@ public class SpecialSubstitution extends BaseNode {
 
     //No override
     private String GetExtendedName() {
-        switch (_specialSubstitutionKey) {
+        switch (specialSubstitutionKey) {
             case Allocator:
                 return "std::allocator";
             case BasicString:
@@ -64,16 +64,16 @@ public class SpecialSubstitution extends BaseNode {
                 return "std::basic_iostream<char, std::char_traits<char> >";
         }
 
-        return null;
+        return "";
     }
 
     @Override
-    public void PrintLeft(StringWriter writer) {
-        if (Type == NodeType.ExpandedSpecialSubstitution) {
+    public void printLeft(StringWriter writer) {
+        if (type == NodeType.ExpandedSpecialSubstitution) {
             writer.write(GetExtendedName());
         } else {
             writer.write("std::");
-            writer.write(GetName());
+            writer.write(getName());
         }
     }
 }

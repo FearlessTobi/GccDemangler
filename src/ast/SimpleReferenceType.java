@@ -3,28 +3,28 @@ package ast;
 import java.io.StringWriter;
 
 public class SimpleReferenceType extends ParentNode {
-    public Reference Qualifier;
+    public final int qualifier;
 
-    public SimpleReferenceType(Reference qualifier, BaseNode child) {
+    public SimpleReferenceType(int qualifier, BaseNode child) {
         super(NodeType.SimpleReferenceType, child);
-        Qualifier = qualifier;
+        this.qualifier = qualifier;
     }
 
     public void PrintQualifier(StringWriter writer) {
-       /* if ((Qualifier & Reference.LValue) != 0) {
+        if ((qualifier & Reference.LValue) != 0) {
             writer.write("&");
         }
 
-        if ((Qualifier & Reference.RValue) != 0) {
+        if ((qualifier & Reference.RValue) != 0) {
             writer.write("&&");
-        }*/
+        }
     }
 
     @Override
-    public void PrintLeft(StringWriter writer) {
+    public void printLeft(StringWriter writer) {
         if (child != null) {
-            child.PrintLeft(writer);
-        } else if (Qualifier != Reference.None) {
+            child.printLeft(writer);
+        } else if (qualifier != Reference.None) {
             writer.write(" ");
         }
 
@@ -32,14 +32,14 @@ public class SimpleReferenceType extends ParentNode {
     }
 
     @Override
-    public boolean HasRightPart() {
-        return child != null && child.HasRightPart();
+    public boolean hasRightPart() {
+        return child != null && child.hasRightPart();
     }
 
     @Override
-    public void PrintRight(StringWriter writer) {
+    public void printRight(StringWriter writer) {
         if (child != null) {
-            child.PrintRight(writer);
+            child.printRight(writer);
         }
     }
 }

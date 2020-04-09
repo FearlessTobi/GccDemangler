@@ -3,18 +3,18 @@ package ast;
 import java.io.StringWriter;
 
 public class IntegerCastExpression extends ParentNode {
-    private String _number;
+    private final String number;
 
     public IntegerCastExpression(BaseNode type, String number) {
         super(NodeType.IntegerCastExpression, type);
-        _number = number;
+        this.number = number;
     }
 
     @Override
-    public void PrintLeft(StringWriter writer) {
+    public void printLeft(StringWriter writer) {
         writer.write("(");
-        child.Print(writer);
+        child.print(writer);
         writer.write(")");
-        writer.write(_number);
+        writer.write(number);
     }
 }

@@ -3,23 +3,23 @@ package ast;
 import java.io.StringWriter;
 
 public class NameTypeWithTemplateArguments extends BaseNode {
-    private BaseNode _prev;
-    private BaseNode _templateArgument;
+    private final BaseNode prev;
+    private final BaseNode templateArgument;
 
     public NameTypeWithTemplateArguments(BaseNode prev, BaseNode templateArgument) {
         super(NodeType.NameTypeWithTemplateArguments);
-        _prev = prev;
-        _templateArgument = templateArgument;
+        this.prev = prev;
+        this.templateArgument = templateArgument;
     }
 
     @Override
-    public String GetName() {
-        return _prev.GetName();
+    public String getName() {
+        return prev.getName();
     }
 
     @Override
-    public void PrintLeft(StringWriter writer) {
-        _prev.Print(writer);
-        _templateArgument.Print(writer);
+    public void printLeft(StringWriter writer) {
+        prev.print(writer);
+        templateArgument.print(writer);
     }
 }

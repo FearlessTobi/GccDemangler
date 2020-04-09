@@ -3,41 +3,41 @@ package ast;
 import java.io.StringWriter;
 
 public class ReferenceType extends BaseNode {
-    private String _reference;
-    private BaseNode _child;
+    private final String reference;
+    private final BaseNode child;
 
     public ReferenceType(String reference, BaseNode child) {
         super(NodeType.ReferenceType);
-        _reference = reference;
-        _child = child;
+        this.reference = reference;
+        this.child = child;
     }
 
     @Override
-    public boolean HasRightPart() {
-        return _child.HasRightPart();
+    public boolean hasRightPart() {
+        return child.hasRightPart();
     }
 
     @Override
-    public void PrintLeft(StringWriter writer) {
-        _child.PrintLeft(writer);
+    public void printLeft(StringWriter writer) {
+        child.printLeft(writer);
 
-        if (_child.IsArray()) {
+        if (child.isArray()) {
             writer.write(" ");
         }
 
-        if (_child.IsArray() || _child.HasFunctions()) {
+        if (child.isArray() || child.hasFunctions()) {
             writer.write("(");
         }
 
-        writer.write(_reference);
+        writer.write(reference);
     }
 
     @Override
-    public void PrintRight(StringWriter writer) {
-        if (_child.IsArray() || _child.HasFunctions()) {
+    public void printRight(StringWriter writer) {
+        if (child.isArray() || child.hasFunctions()) {
             writer.write(")");
         }
 
-        _child.PrintRight(writer);
+        child.printRight(writer);
     }
 }

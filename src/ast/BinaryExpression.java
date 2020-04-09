@@ -3,34 +3,34 @@ package ast;
 import java.io.StringWriter;
 
 public class BinaryExpression extends BaseNode {
-    private BaseNode _leftPart;
-    private String _name;
-    private BaseNode _rightPart;
+    private final BaseNode leftPart;
+    private final String name;
+    private final BaseNode rightPart;
 
     public BinaryExpression(BaseNode leftPart, String name, BaseNode rightPart) {
         super(NodeType.BinaryExpression);
-        _leftPart = leftPart;
-        _name = name;
-        _rightPart = rightPart;
+        this.leftPart = leftPart;
+        this.name = name;
+        this.rightPart = rightPart;
     }
 
     @Override
-    public void PrintLeft(StringWriter writer) {
-        if (_name.equals(">")) {
+    public void printLeft(StringWriter writer) {
+        if (name.equals(">")) {
             writer.write("(");
         }
 
         writer.write("(");
-        _leftPart.Print(writer);
+        leftPart.print(writer);
         writer.write(") ");
 
-        writer.write(_name);
+        writer.write(name);
 
         writer.write(" (");
-        _rightPart.Print(writer);
+        rightPart.print(writer);
         writer.write(")");
 
-        if (_name.equals(">")) {
+        if (name.equals(">")) {
             writer.write(")");
         }
     }

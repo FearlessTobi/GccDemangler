@@ -3,19 +3,19 @@ package ast;
 import java.io.StringWriter;
 
 public class FunctionParameter extends BaseNode {
-    private String _number;
+    private final String number;
 
     public FunctionParameter(String number) {
         super(NodeType.FunctionParameter);
-        _number = number;
+        this.number = number;
     }
 
     @Override
-    public void PrintLeft(StringWriter writer) {
+    public void printLeft(StringWriter writer) {
         writer.write("fp ");
 
-        if (_number != null) {
-            writer.write(_number);
+        if (number != null) {
+            writer.write(number);
         }
     }
 }

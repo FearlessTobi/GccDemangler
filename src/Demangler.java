@@ -6,32 +6,30 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class Demangler {
-    private static final String Base36 = "0123456789abcdefghijklmnopqrstuvwxyz";
-    private List<BaseNode> _substitutionList = new LinkedList<>();
-    private List<BaseNode> _templateParamList = new LinkedList<>();
+    private static final String base36 = "0123456789abcdefghijklmnopqrstuvwxyz";
+    private final List<BaseNode> substitutionList = new LinkedList<>();
+    private List<BaseNode> templateParamList = new LinkedList<>();
 
-    private List<ForwardTemplateReference> _forwardTemplateReferenceList = new ArrayList<>();
+    private final String mangled;
 
-    public String Mangled;
+    private int position;
+    private final int length;
 
-    private int _position;
-    private int _length;
+    private boolean canForwardTemplateReference;
+    private boolean canParseTemplateArgs;
 
-    private boolean _canForwardTemplateReference;
-    private boolean _canParseTemplateArgs;
-
-    public Demangler(String mangled) {
-        Mangled = mangled;
-        _position = 0;
-        _length = mangled.length();
-        _canParseTemplateArgs = true;
+    private Demangler(String mangled) {
+        this.mangled = mangled;
+        position = 0;
+        length = mangled.length();
+        canParseTemplateArgs = true;
     }
 
-    private boolean ConsumeIf(String toConsume) {
-        String mangledPart = Mangled.substring(_position);
+    private boolean consumeIf(String toConsume) {
+        String mangledPart = mangled.substring(position);
 
         if (mangledPart.startsWith(toConsume)) {
-            _position += toConsume.length();
+            position += toConsume.length();
 
             return true;
         }
@@ -39,47 +37,39 @@ public class Demangler {
         return false;
     }
 
-    private String PeekString() {
-        return PeekString(0, 1);
-    }
-
-    private String PeekString(int offset) {
-        return PeekString(offset, 1);
-    }
-
-    private String PeekString(int offset, int length) {
-        if (_position + offset >= length) {
+    private String peekString(int offset, int length) {
+        if (position + offset >= length) {
             return null;
         }
 
-        return Mangled.substring(_position + offset, _position + offset + length);
+        return mangled.substring(position + offset, position + offset + length);
     }
 
-    private char Peek() {
-        return Peek(0);
+    private char peek() {
+        return peek(0);
     }
 
-    private char Peek(int offset) {
-        if (_position + offset >= _length) {
+    private char peek(int offset) {
+        if (position + offset >= length) {
             return '\0';
         }
 
-        return Mangled.charAt(_position + offset);
+        return mangled.charAt(position + offset);
     }
 
-    private char Consume() {
-        if (_position < _length) {
-            return Mangled.charAt(_position++);
+    private char consume() {
+        if (position < length) {
+            return mangled.charAt(position++);
         }
 
         return '\0';
     }
 
-    private int Count() {
-        return _length - _position;
+    private int count() {
+        return length - position;
     }
 
-    private static int FromBase36(String encoded) {
+    private static int fromBase36(String encoded) {
         char[] encodedArray = encoded.toLowerCase().toCharArray();
         char[] reversedEncoded = new char[encodedArray.length];
         //TODO: Check
@@ -90,7 +80,7 @@ public class Demangler {
         int result = 0;
 
         for (int i = 0; i < reversedEncoded.length; i++) {
-            int value = Base36.indexOf(reversedEncoded[i]);
+            int value = base36.indexOf(reversedEncoded[i]);
             if (value == -1) {
                 return -1;
             }
@@ -101,8 +91,8 @@ public class Demangler {
         return result;
     }
 
-    private int ParseSeqId() {
-        String part = Mangled.substring(_position);
+    private int parseSeqId() {
+        String part = mangled.substring(position);
         int seqIdLen = 0;
 
         for (; seqIdLen < part.length(); seqIdLen++) {
@@ -111,9 +101,9 @@ public class Demangler {
             }
         }
 
-        _position += seqIdLen;
+        position += seqIdLen;
 
-        return FromBase36(part.substring(0, seqIdLen));
+        return fromBase36(part.substring(0, seqIdLen));
     }
 
     //   <substitution> ::= S <seq-id> _
@@ -125,31 +115,31 @@ public class Demangler {
     //                  ::= Si # std::basic_istream<char, std::char_traits<char> >
     //                  ::= So # std::basic_ostream<char, std::char_traits<char> >
     //                  ::= Sd # std::basic_iostream<char, std::char_traits<char> >
-    private BaseNode ParseSubstitution() {
-        if (!ConsumeIf("S")) {
+    private BaseNode parseSubstitution() {
+        if (!consumeIf("S")) {
             return null;
         }
 
-        char substitutionSecondChar = Peek();
+        char substitutionSecondChar = peek();
         if (Character.isLowerCase(substitutionSecondChar)) {
             switch (substitutionSecondChar) {
                 case 'a':
-                    _position++;
+                    position++;
                     return new SpecialSubstitution(SpecialSubstitution.SpecialType.Allocator);
                 case 'b':
-                    _position++;
+                    position++;
                     return new SpecialSubstitution(SpecialSubstitution.SpecialType.BasicString);
                 case 's':
-                    _position++;
+                    position++;
                     return new SpecialSubstitution(SpecialSubstitution.SpecialType.String);
                 case 'i':
-                    _position++;
+                    position++;
                     return new SpecialSubstitution(SpecialSubstitution.SpecialType.IStream);
                 case 'o':
-                    _position++;
+                    position++;
                     return new SpecialSubstitution(SpecialSubstitution.SpecialType.OStream);
                 case 'd':
-                    _position++;
+                    position++;
                     return new SpecialSubstitution(SpecialSubstitution.SpecialType.IOStream);
                 default:
                     return null;
@@ -157,27 +147,27 @@ public class Demangler {
         }
 
         // ::= S_
-        if (ConsumeIf("_")) {
-            if (_substitutionList.size() != 0) {
-                return _substitutionList.get(0);
+        if (consumeIf("_")) {
+            if (!substitutionList.isEmpty()) {
+                return substitutionList.get(0);
             }
 
             return null;
         }
 
         //                ::= S <seq-id> _
-        int seqId = ParseSeqId();
+        int seqId = parseSeqId();
         if (seqId < 0) {
             return null;
         }
 
         seqId++;
 
-        if (!ConsumeIf("_") || seqId >= _substitutionList.size()) {
+        if (!consumeIf("_") || seqId >= substitutionList.size()) {
             return null;
         }
 
-        return _substitutionList.get(seqId);
+        return substitutionList.get(seqId);
     }
 
     // NOTE: thoses data aren't used in the output
@@ -187,11 +177,11 @@ public class Demangler {
     //                    # non-virtual base override
     //  <v-offset>    ::= <offset number> _ <virtual offset number>
     //                    # virtual base override, with vcall offset
-    private boolean ParseCallOffset() {
-        if (ConsumeIf("h")) {
-            return ParseNumber(true).length() == 0 || !ConsumeIf("_");
-        } else if (ConsumeIf("v")) {
-            return ParseNumber(true).length() == 0 || !ConsumeIf("_") || ParseNumber(true).length() == 0 || !ConsumeIf("_");
+    private boolean parseCallOffset() {
+        if (consumeIf("h")) {
+            return parseNumber(true).length() == 0 || !consumeIf("_");
+        } else if (consumeIf("v")) {
+            return parseNumber(true).length() == 0 || !consumeIf("_") || parseNumber(true).length() == 0 || !consumeIf("_");
         }
 
         return true;
@@ -202,18 +192,18 @@ public class Demangler {
     //                     ::= Ts <name>  # dependent elaborated type specifier using 'struct' or 'class'
     //                     ::= Tu <name>  # dependent elaborated type specifier using 'union'
     //                     ::= Te <name>  # dependent elaborated type specifier using 'enum'
-    private BaseNode ParseClassEnumType() {
+    private BaseNode parseClassEnumType() {
         String elaboratedType = null;
 
-        if (ConsumeIf("Ts")) {
+        if (consumeIf("Ts")) {
             elaboratedType = "struct";
-        } else if (ConsumeIf("Tu")) {
+        } else if (consumeIf("Tu")) {
             elaboratedType = "union";
-        } else if (ConsumeIf("Te")) {
+        } else if (consumeIf("Te")) {
             elaboratedType = "enum";
         }
 
-        BaseNode name = ParseName();
+        BaseNode name = parseName();
         if (name == null) {
             return null;
         }
@@ -231,25 +221,25 @@ public class Demangler {
     //  <exception-spec>        ::= Do                # non-throwing exception-specification (e.g., noexcept, throw())
     //                          ::= DO <expression> E # computed (instantiation-dependent) noexcept
     //                          ::= Dw <type>+ E      # dynamic exception specification with instantiation-dependent types
-    private BaseNode ParseFunctionType() {
-        int cvQualifiers = ParseCvQualifiers();
+    private BaseNode parseFunctionType() {
+        int cvQualifiers = parseCvQualifiers();
 
         BaseNode exceptionSpec = null;
 
-        if (ConsumeIf("Do")) {
+        if (consumeIf("Do")) {
             exceptionSpec = new NameType("noexcept");
-        } else if (ConsumeIf("DO")) {
-            BaseNode expression = ParseExpression();
-            if (expression == null || !ConsumeIf("E")) {
+        } else if (consumeIf("DO")) {
+            BaseNode expression = parseExpression();
+            if (expression == null || !consumeIf("E")) {
                 return null;
             }
 
             exceptionSpec = new NoexceptSpec(expression);
-        } else if (ConsumeIf("Dw")) {
+        } else if (consumeIf("Dw")) {
             List<BaseNode> types = new ArrayList<>();
 
-            while (!ConsumeIf("E")) {
-                BaseNode type = ParseType();
+            while (!consumeIf("E")) {
+                BaseNode type = parseType();
                 if (type == null) {
                     return null;
                 }
@@ -261,66 +251,66 @@ public class Demangler {
         }
 
         // We don't need the transaction
-        ConsumeIf("Dx");
+        consumeIf("Dx");
 
-        if (!ConsumeIf("F")) {
+        if (!consumeIf("F")) {
             return null;
         }
 
         // extern "C"
-        ConsumeIf("Y");
+        consumeIf("Y");
 
-        BaseNode returnType = ParseType();
+        BaseNode returnType = parseType();
         if (returnType == null) {
             return null;
         }
 
-        Reference referenceQualifier = Reference.None;
-        List<BaseNode> Params = new ArrayList<BaseNode>();
+        int referenceQualifier = Reference.None;
+        List<BaseNode> params = new ArrayList<>();
 
         while (true) {
-            if (ConsumeIf("E")) {
+            if (consumeIf("E")) {
                 break;
             }
 
-            if (ConsumeIf("v")) {
+            if (consumeIf("v")) {
                 continue;
             }
 
-            if (ConsumeIf("RE")) {
+            if (consumeIf("RE")) {
                 referenceQualifier = Reference.LValue;
                 break;
-            } else if (ConsumeIf("OE")) {
+            } else if (consumeIf("OE")) {
                 referenceQualifier = Reference.RValue;
                 break;
             }
 
-            BaseNode type = ParseType();
+            BaseNode type = parseType();
             if (type == null) {
                 return null;
             }
 
-            Params.add(type);
+            params.add(type);
         }
 
-        return new FunctionType(returnType, new NodeArray(Params), new CvType(cvQualifiers, null), new SimpleReferenceType(referenceQualifier, null), exceptionSpec);
+        return new FunctionType(returnType, new NodeArray(params), new CvType(cvQualifiers, null), new SimpleReferenceType(referenceQualifier, null), exceptionSpec);
     }
 
     //   <array-type> ::= A <positive dimension number> _ <element type>
     //                ::= A [<dimension expression>] _ <element type>
-    private BaseNode ParseArrayType() {
-        if (!ConsumeIf("A")) {
+    private BaseNode parseArrayType() {
+        if (!consumeIf("A")) {
             return null;
         }
 
         BaseNode elementType;
-        if (Character.isDigit(Peek())) {
-            String dimension = ParseNumber();
-            if (dimension.length() == 0 || !ConsumeIf("_")) {
+        if (Character.isDigit(peek())) {
+            String dimension = parseNumber();
+            if (dimension.length() == 0 || !consumeIf("_")) {
                 return null;
             }
 
-            elementType = ParseType();
+            elementType = parseType();
             if (elementType == null) {
                 return null;
             }
@@ -328,13 +318,13 @@ public class Demangler {
             return new ArrayType(elementType, dimension);
         }
 
-        if (!ConsumeIf("_")) {
-            BaseNode dimensionExpression = ParseExpression();
-            if (dimensionExpression == null || !ConsumeIf("_")) {
+        if (!consumeIf("_")) {
+            BaseNode dimensionExpression = parseExpression();
+            if (dimensionExpression == null || !consumeIf("_")) {
                 return null;
             }
 
-            elementType = ParseType();
+            elementType = parseType();
             if (elementType == null) {
                 return null;
             }
@@ -342,7 +332,7 @@ public class Demangler {
             return new ArrayType(elementType, dimensionExpression);
         }
 
-        elementType = ParseType();
+        elementType = parseType();
         if (elementType == null) {
             return null;
         }
@@ -350,8 +340,8 @@ public class Demangler {
         return new ArrayType(elementType);
     }
 
-    private BaseNode ParseType() {
-        return ParseType(null);
+    private BaseNode parseType() {
+        return parseType(null);
     }
 
     // <type>  ::= <builtin-type>
@@ -369,39 +359,39 @@ public class Demangler {
     //         ::= C <type>        # complex pair (C99)
     //         ::= G <type>        # imaginary (C99)
     //         ::= <substitution>  # See Compression below
-    private BaseNode ParseType(NameParserContext context) {
+    private BaseNode parseType(NameparserContext context) {
         // Temporary context
         if (context == null) {
-            context = new NameParserContext();
+            context = new NameparserContext();
         }
 
-        BaseNode result = null;
-        switch (Peek()) {
+        BaseNode result;
+        switch (peek()) {
             case 'r':
             case 'V':
             case 'K':
                 int typePos = 0;
 
-                if (Peek(typePos) == 'r') {
+                if (peek(typePos) == 'r') {
                     typePos++;
                 }
 
-                if (Peek(typePos) == 'V') {
+                if (peek(typePos) == 'V') {
                     typePos++;
                 }
 
-                if (Peek(typePos) == 'K') {
+                if (peek(typePos) == 'K') {
                     typePos++;
                 }
 
-                if (Peek(typePos) == 'F' || (Peek(typePos) == 'D' && (Peek(typePos + 1) == 'o' || Peek(typePos + 1) == 'O' || Peek(typePos + 1) == 'w' || Peek(typePos + 1) == 'x'))) {
-                    result = ParseFunctionType();
+                if (peek(typePos) == 'F' || (peek(typePos) == 'D' && (peek(typePos + 1) == 'o' || peek(typePos + 1) == 'O' || peek(typePos + 1) == 'w' || peek(typePos + 1) == 'x'))) {
+                    result = parseFunctionType();
                     break;
                 }
 
-                int cv = ParseCvQualifiers();
+                int cv = parseCvQualifiers();
 
-                result = ParseType(context);
+                result = parseType(context);
 
                 if (result == null) {
                     return null;
@@ -413,139 +403,139 @@ public class Demangler {
                 // TODO: <extended-qualifier>
                 return null;
             case 'v':
-                _position++;
+                position++;
                 return new NameType("void");
             case 'w':
-                _position++;
+                position++;
                 return new NameType("wchar_t");
             case 'b':
-                _position++;
+                position++;
                 return new NameType("boolean");
             case 'c':
-                _position++;
+                position++;
                 return new NameType("char");
             case 'a':
-                _position++;
+                position++;
                 return new NameType("signed char");
             case 'h':
-                _position++;
+                position++;
                 return new NameType("unsigned char");
             case 's':
-                _position++;
+                position++;
                 return new NameType("short");
             case 't':
-                _position++;
+                position++;
                 return new NameType("unsigned short");
             case 'i':
-                _position++;
+                position++;
                 return new NameType("int");
             case 'j':
-                _position++;
+                position++;
                 return new NameType("unsigned int");
             case 'l':
-                _position++;
+                position++;
                 return new NameType("long");
             case 'm':
-                _position++;
+                position++;
                 return new NameType("unsigned long");
             case 'x':
-                _position++;
+                position++;
                 return new NameType("long long");
             case 'y':
-                _position++;
+                position++;
                 return new NameType("unsigned long long");
             case 'n':
-                _position++;
+                position++;
                 return new NameType("__int128");
             case 'o':
-                _position++;
+                position++;
                 return new NameType("unsigned __int128");
             case 'f':
-                _position++;
+                position++;
                 return new NameType("float");
             case 'd':
-                _position++;
+                position++;
                 return new NameType("double");
             case 'e':
-                _position++;
+                position++;
                 return new NameType("long double");
             case 'g':
-                _position++;
+                position++;
                 return new NameType("__float128");
             case 'z':
-                _position++;
+                position++;
                 return new NameType("...");
             case 'u':
-                _position++;
-                return ParseSourceName();
+                position++;
+                return parseSourceName();
             case 'D':
-                switch (Peek(1)) {
+                switch (peek(1)) {
                     case 'd':
-                        _position += 2;
+                        position += 2;
                         return new NameType("decimal64");
                     case 'e':
-                        _position += 2;
+                        position += 2;
                         return new NameType("decimal128");
                     case 'f':
-                        _position += 2;
+                        position += 2;
                         return new NameType("decimal32");
                     case 'h':
-                        _position += 2;
+                        position += 2;
                         // FIXME: GNU c++flit returns this but that is not what is supposed to be returned.
                         return new NameType("half");
                     // return new ast.NameType("decimal16");
                     case 'i':
-                        _position += 2;
+                        position += 2;
                         return new NameType("char32_t");
                     case 's':
-                        _position += 2;
+                        position += 2;
                         return new NameType("char16_t");
                     case 'a':
-                        _position += 2;
+                        position += 2;
                         return new NameType("decltype(auto)");
                     case 'n':
-                        _position += 2;
+                        position += 2;
                         // FIXME: GNU c++flit returns this but that is not what is supposed to be returned.
                         return new NameType("decltype(nullptr)");
                     // return new ast.NameType("std::nullptr_t");
                     case 't':
                     case 'T':
-                        _position += 2;
-                        result = ParseDecltype();
+                        position += 2;
+                        result = parseDecltype();
                         break;
                     case 'o':
                     case 'O':
                     case 'w':
                     case 'x':
-                        result = ParseFunctionType();
+                        result = parseFunctionType();
                         break;
                     default:
                         return null;
                 }
                 break;
             case 'F':
-                result = ParseFunctionType();
+                result = parseFunctionType();
                 break;
             case 'A':
-                return ParseArrayType();
+                return parseArrayType();
             case 'M':
                 // TODO: <pointer-to-member-type>
-                _position++;
+                position++;
                 return null;
             case 'T':
                 // might just be a class enum type
-                if (Peek(1) == 's' || Peek(1) == 'u' || Peek(1) == 'e') {
-                    result = ParseClassEnumType();
+                if (peek(1) == 's' || peek(1) == 'u' || peek(1) == 'e') {
+                    result = parseClassEnumType();
                     break;
                 }
 
-                result = ParseTemplateParam();
+                result = parseTemplateParam();
                 if (result == null) {
                     return null;
                 }
 
-                if (_canParseTemplateArgs && Peek() == 'I') {
-                    BaseNode templateArguments = ParseTemplateArguments();
+                if (canParseTemplateArgs && peek() == 'I') {
+                    BaseNode templateArguments = parseTemplateArguments();
                     if (templateArguments == null) {
                         return null;
                     }
@@ -554,8 +544,8 @@ public class Demangler {
                 }
                 break;
             case 'P':
-                _position++;
-                result = ParseType(context);
+                position++;
+                result = parseType(context);
 
                 if (result == null) {
                     return null;
@@ -564,8 +554,8 @@ public class Demangler {
                 result = new PointerType(result);
                 break;
             case 'R':
-                _position++;
-                result = ParseType(context);
+                position++;
+                result = parseType(context);
 
                 if (result == null) {
                     return null;
@@ -574,8 +564,8 @@ public class Demangler {
                 result = new ReferenceType("&", result);
                 break;
             case 'O':
-                _position++;
-                result = ParseType(context);
+                position++;
+                result = parseType(context);
 
                 if (result == null) {
                     return null;
@@ -584,8 +574,8 @@ public class Demangler {
                 result = new ReferenceType("&&", result);
                 break;
             case 'C':
-                _position++;
-                result = ParseType(context);
+                position++;
+                result = parseType(context);
 
                 if (result == null) {
                     return null;
@@ -594,8 +584,8 @@ public class Demangler {
                 result = new PostfixQualifiedType(" complex", result);
                 break;
             case 'G':
-                _position++;
-                result = ParseType(context);
+                position++;
+                result = parseType(context);
 
                 if (result == null) {
                     return null;
@@ -604,14 +594,14 @@ public class Demangler {
                 result = new PostfixQualifiedType(" imaginary", result);
                 break;
             case 'S':
-                if (Peek(1) != 't') {
-                    BaseNode substitution = ParseSubstitution();
+                if (peek(1) != 't') {
+                    BaseNode substitution = parseSubstitution();
                     if (substitution == null) {
                         return null;
                     }
 
-                    if (_canParseTemplateArgs && Peek() == 'I') {
-                        BaseNode templateArgument = ParseTemplateArgument();
+                    if (canParseTemplateArgs && peek() == 'I') {
+                        BaseNode templateArgument = parseTemplateArgument();
                         if (templateArgument == null) {
                             return null;
                         }
@@ -621,22 +611,18 @@ public class Demangler {
                     }
                     return substitution;
                 } else {
-                    result = ParseClassEnumType();
+                    result = parseClassEnumType();
                     break;
                 }
             default:
-                result = ParseClassEnumType();
+                result = parseClassEnumType();
                 break;
         }
         if (result != null) {
-            _substitutionList.add(result);
+            substitutionList.add(result);
         }
 
         return result;
-    }
-
-    private BaseNode ParseSpecialName() {
-        return ParseSpecialName(null);
     }
 
     // <special-name> ::= TV <type> # virtual table
@@ -649,10 +635,10 @@ public class Demangler {
     //                ::= T <call-offset> <base encoding>
     //                              # base is the nominal target function of thunk
     //                ::= GV <object name>	# Guard variable for one-time initialization
-    private BaseNode ParseSpecialName(NameParserContext context) {
-        if (Peek() != 'T') {
-            if (ConsumeIf("GV")) {
-                BaseNode name = ParseName();
+    private BaseNode parseSpecialName(NameparserContext context) {
+        if (peek() != 'T') {
+            if (consumeIf("GV")) {
+                BaseNode name = parseName();
                 if (name == null) {
                     return null;
                 }
@@ -663,11 +649,11 @@ public class Demangler {
         }
 
         BaseNode node;
-        switch (Peek(1)) {
+        switch (peek(1)) {
             // ::= TV <type>    # virtual table
             case 'V':
-                _position += 2;
-                node = ParseType(context);
+                position += 2;
+                node = parseType(context);
                 if (node == null) {
                     return null;
                 }
@@ -675,8 +661,8 @@ public class Demangler {
                 return new SpecialName("vtable for ", node);
             // ::= TT <type>    # VTT structure (construction vtable index)
             case 'T':
-                _position += 2;
-                node = ParseType(context);
+                position += 2;
+                node = parseType(context);
                 if (node == null) {
                     return null;
                 }
@@ -684,8 +670,8 @@ public class Demangler {
                 return new SpecialName("VTT for ", node);
             // ::= TI <type>    # typeinfo structure
             case 'I':
-                _position += 2;
-                node = ParseType(context);
+                position += 2;
+                node = parseType(context);
                 if (node == null) {
                     return null;
                 }
@@ -693,8 +679,8 @@ public class Demangler {
                 return new SpecialName("typeinfo for ", node);
             // ::= TS <type> # typeinfo name (null-terminated byte String)
             case 'S':
-                _position += 2;
-                node = ParseType(context);
+                position += 2;
+                node = parseType(context);
                 if (node == null) {
                     return null;
                 }
@@ -702,12 +688,12 @@ public class Demangler {
                 return new SpecialName("typeinfo name for ", node);
             // ::= Tc <call-offset> <call-offset> <base encoding>
             case 'c':
-                _position += 2;
-                if (ParseCallOffset() || ParseCallOffset()) {
+                position += 2;
+                if (parseCallOffset() || parseCallOffset()) {
                     return null;
                 }
 
-                node = ParseEncoding();
+                node = parseEncoding();
                 if (node == null) {
                     return null;
                 }
@@ -715,19 +701,19 @@ public class Demangler {
                 return new SpecialName("covariant return thunk to ", node);
             // extension ::= TC <first type> <number> _ <second type>
             case 'C':
-                _position += 2;
-                BaseNode firstType = ParseType();
-                if (firstType == null || ParseNumber(true).length() == 0 || !ConsumeIf("_")) {
+                position += 2;
+                BaseNode firstType = parseType();
+                if (firstType == null || parseNumber(true).length() == 0 || !consumeIf("_")) {
                     return null;
                 }
 
-                BaseNode secondType = ParseType();
+                BaseNode secondType = parseType();
 
                 return new CtorVtableSpecialName(secondType, firstType);
             // ::= TH <object name> # Thread-local initialization
             case 'H':
-                _position += 2;
-                node = ParseName();
+                position += 2;
+                node = parseName();
                 if (node == null) {
                     return null;
                 }
@@ -735,21 +721,21 @@ public class Demangler {
                 return new SpecialName("thread-local initialization routine for ", node);
             // ::= TW <object name> # Thread-local wrapper
             case 'W':
-                _position += 2;
-                node = ParseName();
+                position += 2;
+                node = parseName();
                 if (node == null) {
                     return null;
                 }
 
                 return new SpecialName("thread-local wrapper routine for ", node);
             default:
-                _position++;
-                boolean isVirtual = Peek() == 'v';
-                if (ParseCallOffset()) {
+                position++;
+                boolean isVirtual = peek() == 'v';
+                if (parseCallOffset()) {
                     return null;
                 }
 
-                node = ParseEncoding();
+                node = parseEncoding();
                 if (node == null) {
                     return null;
                 }
@@ -763,16 +749,16 @@ public class Demangler {
     }
 
     // <CV-qualifiers>      ::= [r] [V] [K] # restrict (C99), volatile, const
-    private int ParseCvQualifiers() {
+    private int parseCvQualifiers() {
         int qualifiers = CvType.Cv.None;
 
-        if (ConsumeIf("r")) {
+        if (consumeIf("r")) {
             qualifiers |= CvType.Cv.Restricted;
         }
-        if (ConsumeIf("V")) {
+        if (consumeIf("V")) {
             qualifiers |= CvType.Cv.Volatile;
         }
-        if (ConsumeIf("K")) {
+        if (consumeIf("K")) {
             qualifiers |= CvType.Cv.Const;
         }
 
@@ -782,31 +768,31 @@ public class Demangler {
 
     // <ref-qualifier>      ::= R              # & ref-qualifier
     // <ref-qualifier>      ::= O              # && ref-qualifier
-    private SimpleReferenceType ParseRefQualifiers() {
-        Reference result = Reference.None;
-        if (ConsumeIf("O")) {
+    private SimpleReferenceType parseRefQualifiers() {
+        int result = Reference.None;
+        if (consumeIf("O")) {
             result = Reference.RValue;
-        } else if (ConsumeIf("R")) {
+        } else if (consumeIf("R")) {
             result = Reference.LValue;
         }
         return new SimpleReferenceType(result, null);
     }
 
-    private BaseNode CreateNameNode(BaseNode prev, BaseNode name, NameParserContext context) {
+    private BaseNode createNameNode(BaseNode prev, BaseNode name, NameparserContext context) {
         BaseNode result = name;
         if (prev != null) {
             result = new NestedName(name, prev);
         }
 
         if (context != null) {
-            context.FinishWithTemplateArguments = false;
+            context.finishWithTemplateArguments = false;
         }
 
         return result;
     }
 
-    private int ParsePositiveNumber() {
-        String part = Mangled.substring(_position);
+    private int parsePositiveNumber() {
+        String part = mangled.substring(position);
         int numberLength = 0;
 
         for (; numberLength < part.length(); numberLength++) {
@@ -815,7 +801,7 @@ public class Demangler {
             }
         }
 
-        _position += numberLength;
+        position += numberLength;
 
         if (numberLength == 0) {
             return -1;
@@ -825,20 +811,20 @@ public class Demangler {
     }
 
 
-    private String ParseNumber() {
-        return ParseNumber(false);
+    private String parseNumber() {
+        return parseNumber(false);
     }
 
-    private String ParseNumber(boolean isSigned) {
+    private String parseNumber(boolean isSigned) {
         if (isSigned) {
-            ConsumeIf("n");
+            consumeIf("n");
         }
 
-        if (Count() == 0 || !Character.isDigit(Mangled.charAt(_position))) {
+        if (count() == 0 || !Character.isDigit(mangled.charAt(position))) {
             return null;
         }
 
-        String part = Mangled.substring(_position);
+        String part = mangled.substring(position);
         int numberLength = 0;
 
         for (; numberLength < part.length(); numberLength++) {
@@ -847,20 +833,20 @@ public class Demangler {
             }
         }
 
-        _position += numberLength;
+        position += numberLength;
 
         return part.substring(0, numberLength);
     }
 
     // <source-name> ::= <positive length number> <identifier>
-    private BaseNode ParseSourceName() {
-        int length = ParsePositiveNumber();
-        if (Count() < length || length <= 0) {
+    private BaseNode parseSourceName() {
+        int length = parsePositiveNumber();
+        if (count() < length || length <= 0) {
             return null;
         }
 
-        String name = Mangled.substring(_position, _position + length);
-        _position += length;
+        String name = mangled.substring(position, position + length);
+        position += length;
         if (name.startsWith("_GLOBAL__N")) {
             return new NameType("(anonymous namespace)");
         }
@@ -919,57 +905,57 @@ public class Demangler {
     //                 ::= cv <type>    # (cast) (TODO)
     //                 ::= li <source-name>          # operator ""
     //                 ::= v <digit> <source-name>    # vendor extended operator (TODO)
-    private BaseNode ParseOperatorName(NameParserContext context) {
-        switch (Peek()) {
+    private BaseNode parseOperatorName(NameparserContext context) {
+        switch (peek()) {
             case 'a':
-                switch (Peek(1)) {
+                switch (peek(1)) {
                     case 'a':
-                        _position += 2;
+                        position += 2;
                         return new NameType("operator&&");
                     case 'd':
                     case 'n':
-                        _position += 2;
+                        position += 2;
                         return new NameType("operator&");
                     case 'N':
-                        _position += 2;
+                        position += 2;
                         return new NameType("operator&=");
                     case 'S':
-                        _position += 2;
+                        position += 2;
                         return new NameType("operator=");
                     default:
                         return null;
                 }
             case 'c':
-                switch (Peek(1)) {
+                switch (peek(1)) {
                     case 'l':
-                        _position += 2;
+                        position += 2;
                         return new NameType("operator()");
                     case 'm':
-                        _position += 2;
+                        position += 2;
                         return new NameType("operator,");
                     case 'o':
-                        _position += 2;
+                        position += 2;
                         return new NameType("operator~");
                     case 'v':
-                        _position += 2;
+                        position += 2;
 
-                        boolean canParseTemplateArgsBackup = _canParseTemplateArgs;
-                        boolean canForwardTemplateReferenceBackup = _canForwardTemplateReference;
+                        boolean canparseTemplateArgsBackup = canParseTemplateArgs;
+                        boolean canForwardTemplateReferenceBackup = canForwardTemplateReference;
 
-                        _canParseTemplateArgs = false;
-                        _canForwardTemplateReference = canForwardTemplateReferenceBackup || context != null;
+                        canParseTemplateArgs = false;
+                        canForwardTemplateReference = canForwardTemplateReferenceBackup || context != null;
 
-                        BaseNode type = ParseType();
+                        BaseNode type = parseType();
 
-                        _canParseTemplateArgs = canParseTemplateArgsBackup;
-                        _canForwardTemplateReference = canForwardTemplateReferenceBackup;
+                        canParseTemplateArgs = canparseTemplateArgsBackup;
+                        canForwardTemplateReference = canForwardTemplateReferenceBackup;
 
                         if (type == null) {
                             return null;
                         }
 
                         if (context != null) {
-                            context.CtorDtorConversion = true;
+                            context.ctorDtorConversion = true;
                         }
 
                         return new ConversionOperatorType(type);
@@ -977,182 +963,182 @@ public class Demangler {
                         return null;
                 }
             case 'd':
-                switch (Peek(1)) {
+                switch (peek(1)) {
                     case 'a':
-                        _position += 2;
+                        position += 2;
                         return new NameType("operator delete[]");
                     case 'e':
-                        _position += 2;
+                        position += 2;
                         return new NameType("operator*");
                     case 'l':
-                        _position += 2;
+                        position += 2;
                         return new NameType("operator delete");
                     case 'v':
-                        _position += 2;
+                        position += 2;
                         return new NameType("operator/");
                     case 'V':
-                        _position += 2;
+                        position += 2;
                         return new NameType("operator/=");
                     default:
                         return null;
                 }
             case 'e':
-                switch (Peek(1)) {
+                switch (peek(1)) {
                     case 'o':
-                        _position += 2;
+                        position += 2;
                         return new NameType("operator^");
                     case 'O':
-                        _position += 2;
+                        position += 2;
                         return new NameType("operator^=");
                     case 'q':
-                        _position += 2;
+                        position += 2;
                         return new NameType("operator==");
                     default:
                         return null;
                 }
             case 'g':
-                switch (Peek(1)) {
+                switch (peek(1)) {
                     case 'e':
-                        _position += 2;
+                        position += 2;
                         return new NameType("operator>=");
                     case 't':
-                        _position += 2;
+                        position += 2;
                         return new NameType("operator>");
                     default:
                         return null;
                 }
             case 'i':
-                if (Peek(1) == 'x') {
-                    _position += 2;
+                if (peek(1) == 'x') {
+                    position += 2;
                     return new NameType("operator[]");
                 }
                 return null;
             case 'l':
-                switch (Peek(1)) {
+                switch (peek(1)) {
                     case 'e':
-                        _position += 2;
+                        position += 2;
                         return new NameType("operator<=");
                     case 'i':
-                        _position += 2;
-                        BaseNode sourceName = ParseSourceName();
+                        position += 2;
+                        BaseNode sourceName = parseSourceName();
                         if (sourceName == null) {
                             return null;
                         }
 
                         return new LiteralOperator(sourceName);
                     case 's':
-                        _position += 2;
+                        position += 2;
                         return new NameType("operator<<");
                     case 'S':
-                        _position += 2;
+                        position += 2;
                         return new NameType("operator<<=");
                     case 't':
-                        _position += 2;
+                        position += 2;
                         return new NameType("operator<");
                     default:
                         return null;
                 }
             case 'm':
-                switch (Peek(1)) {
+                switch (peek(1)) {
                     case 'i':
-                        _position += 2;
+                        position += 2;
                         return new NameType("operator-");
                     case 'I':
-                        _position += 2;
+                        position += 2;
                         return new NameType("operator-=");
                     case 'l':
-                        _position += 2;
+                        position += 2;
                         return new NameType("operator*");
                     case 'L':
-                        _position += 2;
+                        position += 2;
                         return new NameType("operator*=");
                     case 'm':
-                        _position += 2;
+                        position += 2;
                         return new NameType("operator--");
                     default:
                         return null;
                 }
             case 'n':
-                switch (Peek(1)) {
+                switch (peek(1)) {
                     case 'a':
-                        _position += 2;
+                        position += 2;
                         return new NameType("operator new[]");
                     case 'e':
-                        _position += 2;
+                        position += 2;
                         return new NameType("operator!=");
                     case 'g':
-                        _position += 2;
+                        position += 2;
                         return new NameType("operator-");
                     case 't':
-                        _position += 2;
+                        position += 2;
                         return new NameType("operator!");
                     case 'w':
-                        _position += 2;
+                        position += 2;
                         return new NameType("operator new");
                     default:
                         return null;
                 }
             case 'o':
-                switch (Peek(1)) {
+                switch (peek(1)) {
                     case 'o':
-                        _position += 2;
+                        position += 2;
                         return new NameType("operator||");
                     case 'r':
-                        _position += 2;
+                        position += 2;
                         return new NameType("operator|");
                     case 'R':
-                        _position += 2;
+                        position += 2;
                         return new NameType("operator|=");
                     default:
                         return null;
                 }
             case 'p':
-                switch (Peek(1)) {
+                switch (peek(1)) {
                     case 'm':
-                        _position += 2;
+                        position += 2;
                         return new NameType("operator->*");
                     case 's':
                     case 'l':
-                        _position += 2;
+                        position += 2;
                         return new NameType("operator+");
                     case 'L':
-                        _position += 2;
+                        position += 2;
                         return new NameType("operator+=");
                     case 'p':
-                        _position += 2;
+                        position += 2;
                         return new NameType("operator++");
                     case 't':
-                        _position += 2;
+                        position += 2;
                         return new NameType("operator->");
                     default:
                         return null;
                 }
             case 'q':
-                if (Peek(1) == 'u') {
-                    _position += 2;
+                if (peek(1) == 'u') {
+                    position += 2;
                     return new NameType("operator?");
                 }
                 return null;
             case 'r':
-                switch (Peek(1)) {
+                switch (peek(1)) {
                     case 'm':
-                        _position += 2;
+                        position += 2;
                         return new NameType("operator%");
                     case 'M':
-                        _position += 2;
+                        position += 2;
                         return new NameType("operator%=");
                     case 's':
-                        _position += 2;
+                        position += 2;
                         return new NameType("operator>>");
                     case 'S':
-                        _position += 2;
+                        position += 2;
                         return new NameType("operator>>=");
                     default:
                         return null;
                 }
             case 's':
-                if (Peek(1) == 's') {
-                    _position += 2;
+                if (peek(1) == 's') {
+                    position += 2;
                     return new NameType("operator<=>");
                 }
                 return null;
@@ -1169,19 +1155,19 @@ public class Demangler {
     //                    ::= <source-name>
     //                    ::= <unnamed-type-name> (TODO)
     //                    ::= DC <source-name>+ E      # structured binding declaration (TODO)
-    private BaseNode ParseUnqualifiedName(NameParserContext context) {
+    private BaseNode parseUnqualifiedName(NameparserContext context) {
         BaseNode result = null;
-        char c = Peek();
+        char c = peek();
         if (c == 'U') {
-            // TODO: Unnamed Type Name
-            // throw new Exception("Unnamed Type Name not implemented");
+            // TODO: Unnamed type Name
+            // throw new Exception("Unnamed type Name not implemented");
         } else if (Character.isDigit(c)) {
-            result = ParseSourceName();
-        } else if (ConsumeIf("DC")) {
+            result = parseSourceName();
+        } else if (consumeIf("DC")) {
             // TODO: Structured Binding Declaration
             // throw new Exception("Structured Binding Declaration not implemented");
         } else {
-            result = ParseOperatorName(context);
+            result = parseOperatorName(context);
         }
 
         if (result != null) {
@@ -1197,42 +1183,42 @@ public class Demangler {
     //                  ::= D0  # deleting destructor
     //                  ::= D1  # complete object destructor
     //                  ::= D2  # base object destructor 
-    private BaseNode ParseCtorDtorName(NameParserContext context, BaseNode prev) {
-        if (prev.Type == NodeType.SpecialSubstitution && prev instanceof SpecialSubstitution) {
+    private BaseNode parseCtorDtorName(NameparserContext context, BaseNode prev) {
+        if (prev.type == NodeType.SpecialSubstitution && prev instanceof SpecialSubstitution) {
             ((SpecialSubstitution) prev).SetExtended();
         }
 
-        if (ConsumeIf("C")) {
-            boolean isInherited = ConsumeIf("I");
+        if (consumeIf("C")) {
+            boolean isInherited = consumeIf("I");
 
-            char ctorDtorType = Peek();
+            char ctorDtorType = peek();
             if (ctorDtorType != '1' && ctorDtorType != '2' && ctorDtorType != '3') {
                 return null;
             }
 
-            _position++;
+            position++;
 
             if (context != null) {
-                context.CtorDtorConversion = true;
+                context.ctorDtorConversion = true;
             }
 
-            if (isInherited && ParseName(context) == null) {
+            if (isInherited && parseName(context) == null) {
                 return null;
             }
 
             return new CtorDtorNameType(prev, false);
         }
 
-        if (ConsumeIf("D")) {
-            char c = Peek();
+        if (consumeIf("D")) {
+            char c = peek();
             if (c != '0' && c != '1' && c != '2') {
                 return null;
             }
 
-            _position++;
+            position++;
 
             if (context != null) {
-                context.CtorDtorConversion = true;
+                context.ctorDtorConversion = true;
             }
 
             return new CtorDtorNameType(prev, true);
@@ -1245,34 +1231,34 @@ public class Demangler {
     //                  ::= fp <top-level CV-qualifiers> <parameter-2 non-negative number> _                                                         # L == 0, second and later parameters
     //                  ::= fL <L-1 non-negative number> p <top-level CV-qualifiers> _                                                               # L > 0, first parameter
     //                  ::= fL <L-1 non-negative number> p <top-level CV-qualifiers> <parameter-2 non-negative number> _                             # L > 0, second and later parameters
-    private BaseNode ParseFunctionParameter() {
-        if (ConsumeIf("fp")) {
+    private BaseNode parseFunctionParameter() {
+        if (consumeIf("fp")) {
             // ignored
-            ParseCvQualifiers();
+            parseCvQualifiers();
 
-            if (!ConsumeIf("_")) {
+            if (!consumeIf("_")) {
                 return null;
             }
 
-            return new FunctionParameter(ParseNumber());
-        } else if (ConsumeIf("fL")) {
-            String l1Number = ParseNumber();
+            return new FunctionParameter(parseNumber());
+        } else if (consumeIf("fL")) {
+            String l1Number = parseNumber();
             if (l1Number == null || l1Number.length() == 0) {
                 return null;
             }
 
-            if (!ConsumeIf("p")) {
+            if (!consumeIf("p")) {
                 return null;
             }
 
             // ignored
-            ParseCvQualifiers();
+            parseCvQualifiers();
 
-            if (!ConsumeIf("_")) {
+            if (!consumeIf("_")) {
                 return null;
             }
 
-            return new FunctionParameter(ParseNumber());
+            return new FunctionParameter(parseNumber());
         }
 
         return null;
@@ -1282,12 +1268,12 @@ public class Demangler {
     //             ::= fR <binary-operator-name> <expression> <expression>
     //             ::= fl <binary-operator-name> <expression>
     //             ::= fr <binary-operator-name> <expression>
-    private BaseNode ParseFoldExpression() {
-        if (!ConsumeIf("f")) {
+    private BaseNode parseFoldExpression() {
+        if (!consumeIf("f")) {
             return null;
         }
 
-        char foldKind = Peek();
+        char foldKind = peek();
         boolean hasInitializer = foldKind == 'L' || foldKind == 'R';
         boolean isLeftFold = foldKind == 'l' || foldKind == 'L';
 
@@ -1295,11 +1281,11 @@ public class Demangler {
             return null;
         }
 
-        _position++;
+        position++;
 
-        String operatorName = null;
+        String operatorName;
 
-        switch (PeekString(0, 2)) {
+        switch (peekString(0, 2)) {
             case "aa":
                 operatorName = "&&";
                 break;
@@ -1397,9 +1383,9 @@ public class Demangler {
                 return null;
         }
 
-        _position += 2;
+        position += 2;
 
-        BaseNode expression = ParseExpression();
+        BaseNode expression = parseExpression();
         if (expression == null) {
             return null;
         }
@@ -1407,7 +1393,7 @@ public class Demangler {
         BaseNode initializer = null;
 
         if (hasInitializer) {
-            initializer = ParseExpression();
+            initializer = parseExpression();
             if (initializer == null) {
                 return null;
             }
@@ -1425,24 +1411,24 @@ public class Demangler {
 
     //                ::= cv <type> <expression>                               # type (expression), conversion with one argument
     //                ::= cv <type> _ <expression>* E                          # type (expr-list), conversion with other than one argument
-    private BaseNode ParseConversionExpression() {
-        if (!ConsumeIf("cv")) {
+    private BaseNode parseConversionExpression() {
+        if (!consumeIf("cv")) {
             return null;
         }
 
-        boolean canParseTemplateArgsBackup = _canParseTemplateArgs;
-        _canParseTemplateArgs = false;
-        BaseNode type = ParseType();
-        _canParseTemplateArgs = canParseTemplateArgsBackup;
+        boolean canparseTemplateArgsBackup = canParseTemplateArgs;
+        canParseTemplateArgs = false;
+        BaseNode type = parseType();
+        canParseTemplateArgs = canparseTemplateArgsBackup;
 
         if (type == null) {
             return null;
         }
 
-        List<BaseNode> expressions = new ArrayList<BaseNode>();
-        if (ConsumeIf("_")) {
-            while (!ConsumeIf("E")) {
-                BaseNode expression = ParseExpression();
+        List<BaseNode> expressions = new ArrayList<>();
+        if (consumeIf("_")) {
+            while (!consumeIf("E")) {
+                BaseNode expression = parseExpression();
                 if (expression == null) {
                     return null;
                 }
@@ -1450,7 +1436,7 @@ public class Demangler {
                 expressions.add(expression);
             }
         } else {
-            BaseNode expression = ParseExpression();
+            BaseNode expression = parseExpression();
             if (expression == null) {
                 return null;
             }
@@ -1461,13 +1447,13 @@ public class Demangler {
         return new ConversionExpression(type, new NodeArray(expressions));
     }
 
-    private BaseNode ParseBinaryExpression(String name) {
-        BaseNode leftPart = ParseExpression();
+    private BaseNode parseBinaryExpression(String name) {
+        BaseNode leftPart = parseExpression();
         if (leftPart == null) {
             return null;
         }
 
-        BaseNode rightPart = ParseExpression();
+        BaseNode rightPart = parseExpression();
         if (rightPart == null) {
             return null;
         }
@@ -1475,8 +1461,8 @@ public class Demangler {
         return new BinaryExpression(leftPart, name, rightPart);
     }
 
-    private BaseNode ParsePrefixExpression(String name) {
-        BaseNode expression = ParseExpression();
+    private BaseNode parsePrefixExpression(String name) {
+        BaseNode expression = parseExpression();
         if (expression == null) {
             return null;
         }
@@ -1490,49 +1476,49 @@ public class Demangler {
     //                     ::= dx <index expression> <braced-expression>     # [expr] = expr
     //                     ::= dX <range begin expression> <range end expression> <braced-expression>
     //                                                                       # [expr ... expr] = expr
-    private BaseNode ParseBracedExpression() {
-        if (Peek() == 'd') {
+    private BaseNode parseBracedExpression() {
+        if (peek() == 'd') {
             BaseNode bracedExpressionNode;
-            switch (Peek(1)) {
+            switch (peek(1)) {
                 case 'i':
-                    _position += 2;
-                    BaseNode field = ParseSourceName();
+                    position += 2;
+                    BaseNode field = parseSourceName();
                     if (field == null) {
                         return null;
                     }
 
-                    bracedExpressionNode = ParseBracedExpression();
+                    bracedExpressionNode = parseBracedExpression();
                     if (bracedExpressionNode == null) {
                         return null;
                     }
 
                     return new BracedExpression(field, bracedExpressionNode, false);
                 case 'x':
-                    _position += 2;
-                    BaseNode index = ParseExpression();
+                    position += 2;
+                    BaseNode index = parseExpression();
                     if (index == null) {
                         return null;
                     }
 
-                    bracedExpressionNode = ParseBracedExpression();
+                    bracedExpressionNode = parseBracedExpression();
                     if (bracedExpressionNode == null) {
                         return null;
                     }
 
                     return new BracedExpression(index, bracedExpressionNode, true);
                 case 'X':
-                    _position += 2;
-                    BaseNode rangeBeginExpression = ParseExpression();
+                    position += 2;
+                    BaseNode rangeBeginExpression = parseExpression();
                     if (rangeBeginExpression == null) {
                         return null;
                     }
 
-                    BaseNode rangeEndExpression = ParseExpression();
+                    BaseNode rangeEndExpression = parseExpression();
                     if (rangeEndExpression == null) {
                         return null;
                     }
 
-                    bracedExpressionNode = ParseBracedExpression();
+                    bracedExpressionNode = parseBracedExpression();
                     if (bracedExpressionNode == null) {
                         return null;
                     }
@@ -1541,7 +1527,7 @@ public class Demangler {
             }
         }
 
-        return ParseExpression();
+        return parseExpression();
     }
 
     //               ::= [gs] nw <expression>* _ <type> E                    # new (expr-list) type
@@ -1550,19 +1536,19 @@ public class Demangler {
     //               ::= [gs] na <expression>* _ <type> <initializer>        # new[] (expr-list) type (init)
     //
     // <initializer> ::= pi <expression>* E                                  # parenthesized initialization
-    private BaseNode ParseNewExpression() {
-        boolean isGlobal = ConsumeIf("gs");
-        boolean isArray = Peek(1) == 'a';
+    private BaseNode parseNewExpression() {
+        boolean isGlobal = consumeIf("gs");
+        boolean isArray = peek(1) == 'a';
 
-        if (!ConsumeIf("nw") || !ConsumeIf("na")) {
+        if (!consumeIf("nw") || !consumeIf("na")) {
             return null;
         }
 
-        List<BaseNode> expressions = new ArrayList<BaseNode>();
-        List<BaseNode> initializers = new ArrayList<BaseNode>();
+        List<BaseNode> expressions = new ArrayList<>();
+        List<BaseNode> initializers = new ArrayList<>();
 
-        while (!ConsumeIf("_")) {
-            BaseNode expression = ParseExpression();
+        while (!consumeIf("_")) {
+            BaseNode expression = parseExpression();
             if (expression == null) {
                 return null;
             }
@@ -1570,21 +1556,21 @@ public class Demangler {
             expressions.add(expression);
         }
 
-        BaseNode typeNode = ParseType();
+        BaseNode typeNode = parseType();
         if (typeNode == null) {
             return null;
         }
 
-        if (ConsumeIf("pi")) {
-            while (!ConsumeIf("E")) {
-                BaseNode initializer = ParseExpression();
+        if (consumeIf("pi")) {
+            while (!consumeIf("E")) {
+                BaseNode initializer = parseExpression();
                 if (initializer == null) {
                     return null;
                 }
 
                 initializers.add(initializer);
             }
-        } else if (!ConsumeIf("E")) {
+        } else if (!consumeIf("E")) {
             return null;
         }
 
@@ -1634,51 +1620,51 @@ public class Demangler {
     //                                                                       # freestanding dependent name (e.g., T::x),
     //                                                                       # objectless nonstatic member reference
     //              ::= <expr-primary>
-    private BaseNode ParseExpression() {
-        boolean isGlobal = ConsumeIf("gs");
-        BaseNode expression = null;
-        if (Count() < 2) {
+    private BaseNode parseExpression() {
+        boolean isGlobal = consumeIf("gs");
+        BaseNode expression;
+        if (count() < 2) {
             return null;
         }
 
-        switch (Peek()) {
+        switch (peek()) {
             case 'L':
-                return ParseExpressionPrimary();
+                return parseExpressionPrimary();
             case 'T':
-                return ParseTemplateParam();
+                return parseTemplateParam();
             case 'f':
-                char c = Peek(1);
-                if (c == 'p' || (c == 'L' && Character.isDigit(Peek(2)))) {
-                    return ParseFunctionParameter();
+                char c = peek(1);
+                if (c == 'p' || (c == 'L' && Character.isDigit(peek(2)))) {
+                    return parseFunctionParameter();
                 }
 
-                return ParseFoldExpression();
+                return parseFoldExpression();
             case 'a':
-                switch (Peek(1)) {
+                switch (peek(1)) {
                     case 'a':
-                        _position += 2;
-                        return ParseBinaryExpression("&&");
+                        position += 2;
+                        return parseBinaryExpression("&&");
                     case 'd':
                     case 'n':
-                        _position += 2;
-                        return ParseBinaryExpression("&");
+                        position += 2;
+                        return parseBinaryExpression("&");
                     case 'N':
-                        _position += 2;
-                        return ParseBinaryExpression("&=");
+                        position += 2;
+                        return parseBinaryExpression("&=");
                     case 'S':
-                        _position += 2;
-                        return ParseBinaryExpression("=");
+                        position += 2;
+                        return parseBinaryExpression("=");
                     case 't':
-                        _position += 2;
-                        BaseNode type = ParseType();
+                        position += 2;
+                        BaseNode type = parseType();
                         if (type == null) {
                             return null;
                         }
 
                         return new EnclosedExpression("alignof (", type, ")");
                     case 'z':
-                        _position += 2;
-                        expression = ParseExpression();
+                        position += 2;
+                        expression = parseExpression();
                         if (expression == null) {
                             return null;
                         }
@@ -1687,30 +1673,30 @@ public class Demangler {
                 }
                 return null;
             case 'c':
-                switch (Peek(1)) {
+                switch (peek(1)) {
                     case 'c':
-                        _position += 2;
-                        BaseNode to = ParseType();
+                        position += 2;
+                        BaseNode to = parseType();
                         if (to == null) {
                             return null;
                         }
 
-                        BaseNode from = ParseExpression();
+                        BaseNode from = parseExpression();
                         if (from == null) {
                             return null;
                         }
 
                         return new CastExpression("const_cast", to, from);
                     case 'l':
-                        _position += 2;
-                        BaseNode callee = ParseExpression();
+                        position += 2;
+                        BaseNode callee = parseExpression();
                         if (callee == null) {
                             return null;
                         }
 
-                        List<BaseNode> names = new ArrayList<BaseNode>();
-                        while (!ConsumeIf("E")) {
-                            expression = ParseExpression();
+                        List<BaseNode> names = new ArrayList<>();
+                        while (!consumeIf("E")) {
+                            expression = parseExpression();
                             if (expression == null) {
                                 return null;
                             }
@@ -1719,131 +1705,128 @@ public class Demangler {
                         }
                         return new CallExpression(callee, names);
                     case 'm':
-                        _position += 2;
-                        return ParseBinaryExpression(",");
+                        position += 2;
+                        return parseBinaryExpression(",");
                     case 'o':
-                        _position += 2;
-                        return ParsePrefixExpression("~");
+                        position += 2;
+                        return parsePrefixExpression("~");
                     case 'v':
-                        return ParseConversionExpression();
+                        return parseConversionExpression();
                 }
                 return null;
             case 'd':
-                BaseNode leftNode = null;
-                BaseNode rightNode = null;
-                switch (Peek(1)) {
+                BaseNode leftNode;
+                BaseNode rightNode;
+                switch (peek(1)) {
                     case 'a':
-                        _position += 2;
-                        expression = ParseExpression();
+                        position += 2;
+                        expression = parseExpression();
                         if (expression == null) {
-                            return expression;
+                            return null;
                         }
 
                         return new DeleteExpression(expression, isGlobal, true);
                     case 'c':
-                        _position += 2;
-                        BaseNode type = ParseType();
+                        position += 2;
+                        BaseNode type = parseType();
                         if (type == null) {
                             return null;
                         }
 
-                        expression = ParseExpression();
+                        expression = parseExpression();
                         if (expression == null) {
-                            return expression;
+                            return null;
                         }
 
                         return new CastExpression("dynamic_cast", type, expression);
                     case 'e':
-                        _position += 2;
-                        return ParsePrefixExpression("*");
+                        position += 2;
+                        return parsePrefixExpression("*");
                     case 'l':
-                        _position += 2;
-                        expression = ParseExpression();
+                        position += 2;
+                        expression = parseExpression();
                         if (expression == null) {
                             return null;
                         }
 
                         return new DeleteExpression(expression, isGlobal, false);
                     case 'n':
-                        return ParseUnresolvedName();
+                        return parseUnresolvedName();
                     case 's':
-                        _position += 2;
-                        leftNode = ParseExpression();
+                        position += 2;
+                        leftNode = parseExpression();
                         if (leftNode == null) {
                             return null;
                         }
 
-                        rightNode = ParseExpression();
+                        rightNode = parseExpression();
                         if (rightNode == null) {
                             return null;
                         }
 
                         return new MemberExpression(leftNode, ".*", rightNode);
                     case 't':
-                        _position += 2;
-                        leftNode = ParseExpression();
+                        position += 2;
+                        leftNode = parseExpression();
                         if (leftNode == null) {
                             return null;
                         }
 
-                        rightNode = ParseExpression();
+                        rightNode = parseExpression();
                         if (rightNode == null) {
                             return null;
                         }
 
                         return new MemberExpression(leftNode, ".", rightNode);
                     case 'v':
-                        _position += 2;
-                        return ParseBinaryExpression("/");
+                        position += 2;
+                        return parseBinaryExpression("/");
                     case 'V':
-                        _position += 2;
-                        return ParseBinaryExpression("/=");
+                        position += 2;
+                        return parseBinaryExpression("/=");
                 }
                 return null;
             case 'e':
-                switch (Peek(1)) {
+                switch (peek(1)) {
                     case 'o':
-                        _position += 2;
-                        return ParseBinaryExpression("^");
+                        position += 2;
+                        return parseBinaryExpression("^");
                     case 'O':
-                        _position += 2;
-                        return ParseBinaryExpression("^=");
+                        position += 2;
+                        return parseBinaryExpression("^=");
                     case 'q':
-                        _position += 2;
-                        return ParseBinaryExpression("==");
+                        position += 2;
+                        return parseBinaryExpression("==");
                 }
                 return null;
             case 'g':
-                switch (Peek(1)) {
+                switch (peek(1)) {
                     case 'e':
-                        _position += 2;
-                        return ParseBinaryExpression(">=");
+                        position += 2;
+                        return parseBinaryExpression(">=");
                     case 't':
-                        _position += 2;
-                        return ParseBinaryExpression(">");
+                        position += 2;
+                        return parseBinaryExpression(">");
                 }
                 return null;
             case 'i':
-                switch (Peek(1)) {
+                switch (peek(1)) {
                     case 'x':
-                        _position += 2;
-                        BaseNode Base = ParseExpression();
-                        if (Base == null) {
+                        position += 2;
+                        BaseNode baseNode = parseExpression();
+                        if (baseNode == null) {
                             return null;
                         }
 
-                        BaseNode subscript = ParseExpression();
-                        if (Base == null) {
-                            return null;
-                        }
+                        BaseNode subscript = parseExpression();
 
-                        return new ArraySubscriptingExpression(Base, subscript);
+                        return new ArraySubscriptingExpression(baseNode, subscript);
                     case 'l':
-                        _position += 2;
+                        position += 2;
 
-                        List<BaseNode> bracedExpressions = new ArrayList<BaseNode>();
-                        while (!ConsumeIf("E")) {
-                            expression = ParseBracedExpression();
+                        List<BaseNode> bracedExpressions = new ArrayList<>();
+                        while (!consumeIf("E")) {
+                            expression = parseBracedExpression();
                             if (expression == null) {
                                 return null;
                             }
@@ -1854,42 +1837,42 @@ public class Demangler {
                 }
                 return null;
             case 'l':
-                switch (Peek(1)) {
+                switch (peek(1)) {
                     case 'e':
-                        _position += 2;
-                        return ParseBinaryExpression("<=");
+                        position += 2;
+                        return parseBinaryExpression("<=");
                     case 's':
-                        _position += 2;
-                        return ParseBinaryExpression("<<");
+                        position += 2;
+                        return parseBinaryExpression("<<");
                     case 'S':
-                        _position += 2;
-                        return ParseBinaryExpression("<<=");
+                        position += 2;
+                        return parseBinaryExpression("<<=");
                     case 't':
-                        _position += 2;
-                        return ParseBinaryExpression("<");
+                        position += 2;
+                        return parseBinaryExpression("<");
                 }
                 return null;
             case 'm':
-                switch (Peek(1)) {
+                switch (peek(1)) {
                     case 'i':
-                        _position += 2;
-                        return ParseBinaryExpression("-");
+                        position += 2;
+                        return parseBinaryExpression("-");
                     case 'I':
-                        _position += 2;
-                        return ParseBinaryExpression("-=");
+                        position += 2;
+                        return parseBinaryExpression("-=");
                     case 'l':
-                        _position += 2;
-                        return ParseBinaryExpression("*");
+                        position += 2;
+                        return parseBinaryExpression("*");
                     case 'L':
-                        _position += 2;
-                        return ParseBinaryExpression("*=");
+                        position += 2;
+                        return parseBinaryExpression("*=");
                     case 'm':
-                        _position += 2;
-                        if (ConsumeIf("_")) {
-                            return ParsePrefixExpression("--");
+                        position += 2;
+                        if (consumeIf("_")) {
+                            return parsePrefixExpression("--");
                         }
 
-                        expression = ParseExpression();
+                        expression = parseExpression();
                         if (expression == null) {
                             return null;
                         }
@@ -1898,23 +1881,23 @@ public class Demangler {
                 }
                 return null;
             case 'n':
-                switch (Peek(1)) {
+                switch (peek(1)) {
                     case 'a':
                     case 'w':
-                        _position += 2;
-                        return ParseNewExpression();
+                        position += 2;
+                        return parseNewExpression();
                     case 'e':
-                        _position += 2;
-                        return ParseBinaryExpression("!=");
+                        position += 2;
+                        return parseBinaryExpression("!=");
                     case 'g':
-                        _position += 2;
-                        return ParsePrefixExpression("-");
+                        position += 2;
+                        return parsePrefixExpression("-");
                     case 't':
-                        _position += 2;
-                        return ParsePrefixExpression("!");
+                        position += 2;
+                        return parsePrefixExpression("!");
                     case 'x':
-                        _position += 2;
-                        expression = ParseExpression();
+                        position += 2;
+                        expression = parseExpression();
                         if (expression == null) {
                             return null;
                         }
@@ -1923,52 +1906,52 @@ public class Demangler {
                 }
                 return null;
             case 'o':
-                switch (Peek(1)) {
+                switch (peek(1)) {
                     case 'n':
-                        return ParseUnresolvedName();
+                        return parseUnresolvedName();
                     case 'o':
-                        _position += 2;
-                        return ParseBinaryExpression("||");
+                        position += 2;
+                        return parseBinaryExpression("||");
                     case 'r':
-                        _position += 2;
-                        return ParseBinaryExpression("|");
+                        position += 2;
+                        return parseBinaryExpression("|");
                     case 'R':
-                        _position += 2;
-                        return ParseBinaryExpression("|=");
+                        position += 2;
+                        return parseBinaryExpression("|=");
                 }
                 return null;
             case 'p':
-                switch (Peek(1)) {
+                switch (peek(1)) {
                     case 'm':
-                        _position += 2;
-                        return ParseBinaryExpression("->*");
+                        position += 2;
+                        return parseBinaryExpression("->*");
                     case 'l':
                     case 's':
-                        _position += 2;
-                        return ParseBinaryExpression("+");
+                        position += 2;
+                        return parseBinaryExpression("+");
                     case 'L':
-                        _position += 2;
-                        return ParseBinaryExpression("+=");
+                        position += 2;
+                        return parseBinaryExpression("+=");
                     case 'p':
-                        _position += 2;
-                        if (ConsumeIf("_")) {
-                            return ParsePrefixExpression("++");
+                        position += 2;
+                        if (consumeIf("_")) {
+                            return parsePrefixExpression("++");
                         }
 
-                        expression = ParseExpression();
+                        expression = parseExpression();
                         if (expression == null) {
                             return null;
                         }
 
                         return new PostfixExpression(expression, "++");
                     case 't':
-                        _position += 2;
-                        leftNode = ParseExpression();
+                        position += 2;
+                        leftNode = parseExpression();
                         if (leftNode == null) {
                             return null;
                         }
 
-                        rightNode = ParseExpression();
+                        rightNode = parseExpression();
                         if (rightNode == null) {
                             return null;
                         }
@@ -1977,19 +1960,19 @@ public class Demangler {
                 }
                 return null;
             case 'q':
-                if (Peek(1) == 'u') {
-                    _position += 2;
-                    BaseNode condition = ParseExpression();
+                if (peek(1) == 'u') {
+                    position += 2;
+                    BaseNode condition = parseExpression();
                     if (condition == null) {
                         return null;
                     }
 
-                    leftNode = ParseExpression();
+                    leftNode = parseExpression();
                     if (leftNode == null) {
                         return null;
                     }
 
-                    rightNode = ParseExpression();
+                    rightNode = parseExpression();
                     if (rightNode == null) {
                         return null;
                     }
@@ -1998,89 +1981,87 @@ public class Demangler {
                 }
                 return null;
             case 'r':
-                switch (Peek(1)) {
+                switch (peek(1)) {
                     case 'c':
-                        _position += 2;
-                        BaseNode to = ParseType();
+                        position += 2;
+                        BaseNode to = parseType();
                         if (to == null) {
                             return null;
                         }
 
-                        BaseNode from = ParseExpression();
+                        BaseNode from = parseExpression();
                         if (from == null) {
                             return null;
                         }
 
                         return new CastExpression("reinterpret_cast", to, from);
                     case 'm':
-                        _position += 2;
-                        return ParseBinaryExpression("%");
                     case 'M':
-                        _position += 2;
-                        return ParseBinaryExpression("%");
+                        position += 2;
+                        return parseBinaryExpression("%");
                     case 's':
-                        _position += 2;
-                        return ParseBinaryExpression(">>");
+                        position += 2;
+                        return parseBinaryExpression(">>");
                     case 'S':
-                        _position += 2;
-                        return ParseBinaryExpression(">>=");
+                        position += 2;
+                        return parseBinaryExpression(">>=");
                 }
                 return null;
             case 's':
-                switch (Peek(1)) {
+                switch (peek(1)) {
                     case 'c':
-                        _position += 2;
-                        BaseNode to = ParseType();
+                        position += 2;
+                        BaseNode to = parseType();
                         if (to == null) {
                             return null;
                         }
 
-                        BaseNode from = ParseExpression();
+                        BaseNode from = parseExpression();
                         if (from == null) {
                             return null;
                         }
 
                         return new CastExpression("static_cast", to, from);
                     case 'p':
-                        _position += 2;
-                        expression = ParseExpression();
+                        position += 2;
+                        expression = parseExpression();
                         if (expression == null) {
                             return null;
                         }
 
                         return new PackedTemplateParameterExpansion(expression);
                     case 'r':
-                        return ParseUnresolvedName();
+                        return parseUnresolvedName();
                     case 't':
-                        _position += 2;
-                        BaseNode enclosedType = ParseType();
+                        position += 2;
+                        BaseNode enclosedType = parseType();
                         if (enclosedType == null) {
                             return null;
                         }
 
                         return new EnclosedExpression("sizeof (", enclosedType, ")");
                     case 'z':
-                        _position += 2;
-                        expression = ParseExpression();
+                        position += 2;
+                        expression = parseExpression();
                         if (expression == null) {
                             return null;
                         }
 
                         return new EnclosedExpression("sizeof (", expression, ")");
                     case 'Z':
-                        _position += 2;
-                        BaseNode sizeofParamNode = null;
-                        switch (Peek()) {
+                        position += 2;
+                        BaseNode sizeofParamNode;
+                        switch (peek()) {
                             case 'T':
                                 // FIXME: ??? Not entire sure if it's right
-                                sizeofParamNode = ParseFunctionParameter();
+                                sizeofParamNode = parseFunctionParameter();
                                 if (sizeofParamNode == null) {
                                     return null;
                                 }
 
                                 return new EnclosedExpression("sizeof...(", new PackedTemplateParameterExpansion(sizeofParamNode), ")");
                             case 'f':
-                                sizeofParamNode = ParseFunctionParameter();
+                                sizeofParamNode = parseFunctionParameter();
                                 if (sizeofParamNode == null) {
                                     return null;
                                 }
@@ -2089,10 +2070,10 @@ public class Demangler {
                         }
                         return null;
                     case 'P':
-                        _position += 2;
-                        List<BaseNode> arguments = new ArrayList<BaseNode>();
-                        while (!ConsumeIf("E")) {
-                            BaseNode argument = ParseTemplateArgument();
+                        position += 2;
+                        List<BaseNode> arguments = new ArrayList<>();
+                        while (!consumeIf("E")) {
+                            BaseNode argument = parseTemplateArgument();
                             if (argument == null) {
                                 return null;
                             }
@@ -2103,31 +2084,31 @@ public class Demangler {
                 }
                 return null;
             case 't':
-                switch (Peek(1)) {
+                switch (peek(1)) {
                     case 'e':
-                        expression = ParseExpression();
+                        expression = parseExpression();
                         if (expression == null) {
                             return null;
                         }
 
                         return new EnclosedExpression("typeid (", expression, ")");
                     case 't':
-                        BaseNode enclosedType = ParseExpression();
+                        BaseNode enclosedType = parseExpression();
                         if (enclosedType == null) {
                             return null;
                         }
 
                         return new EnclosedExpression("typeid (", enclosedType, ")");
                     case 'l':
-                        _position += 2;
-                        BaseNode typeNode = ParseType();
+                        position += 2;
+                        BaseNode typeNode = parseType();
                         if (typeNode == null) {
                             return null;
                         }
 
-                        List<BaseNode> bracedExpressions = new ArrayList<BaseNode>();
-                        while (!ConsumeIf("E")) {
-                            expression = ParseBracedExpression();
+                        List<BaseNode> bracedExpressions = new ArrayList<>();
+                        while (!consumeIf("E")) {
+                            expression = parseBracedExpression();
                             if (expression == null) {
                                 return null;
                             }
@@ -2136,11 +2117,11 @@ public class Demangler {
                         }
                         return new InitListExpression(typeNode, bracedExpressions);
                     case 'r':
-                        _position += 2;
+                        position += 2;
                         return new NameType("throw");
                     case 'w':
-                        _position += 2;
-                        expression = ParseExpression();
+                        position += 2;
+                        expression = parseExpression();
                         if (expression == null) {
                             return null;
                         }
@@ -2150,16 +2131,16 @@ public class Demangler {
                 return null;
         }
 
-        if (Character.isDigit(Peek())) {
-            return ParseUnresolvedName();
+        if (Character.isDigit(peek())) {
+            return parseUnresolvedName();
         }
 
         return null;
     }
 
-    private BaseNode ParseIntegerLiteral(String literalName) {
-        String number = ParseNumber(true);
-        if (number == null || number.length() == 0 || !ConsumeIf("E")) {
+    private BaseNode parseIntegerLiteral(String literalName) {
+        String number = parseNumber(true);
+        if (number == null || number.length() == 0 || !consumeIf("E")) {
             return null;
         }
 
@@ -2173,73 +2154,73 @@ public class Demangler {
     //                ::= L <pointer type> 0 E                               # null pointer template argument
     //                ::= L <type> <real-part float> _ <imag-part float> E   # complex floating point literal (C 2000)
     //                ::= L _Z <encoding> E                                  # external name
-    private BaseNode ParseExpressionPrimary() {
-        if (!ConsumeIf("L")) {
+    private BaseNode parseExpressionPrimary() {
+        if (!consumeIf("L")) {
             return null;
         }
 
-        switch (Peek()) {
+        switch (peek()) {
             case 'w':
-                _position++;
-                return ParseIntegerLiteral("wchar_t");
+                position++;
+                return parseIntegerLiteral("wchar_t");
             case 'b':
-                if (ConsumeIf("b0E")) {
+                if (consumeIf("b0E")) {
                     return new NameType("false", NodeType.BooleanExpression);
                 }
 
-                if (ConsumeIf("b1E")) {
+                if (consumeIf("b1E")) {
                     return new NameType("true", NodeType.BooleanExpression);
                 }
 
                 return null;
             case 'c':
-                _position++;
-                return ParseIntegerLiteral("char");
+                position++;
+                return parseIntegerLiteral("char");
             case 'a':
-                _position++;
-                return ParseIntegerLiteral("signed char");
+                position++;
+                return parseIntegerLiteral("signed char");
             case 'h':
-                _position++;
-                return ParseIntegerLiteral("unsigned char");
+                position++;
+                return parseIntegerLiteral("unsigned char");
             case 's':
-                _position++;
-                return ParseIntegerLiteral("short");
+                position++;
+                return parseIntegerLiteral("short");
             case 't':
-                _position++;
-                return ParseIntegerLiteral("unsigned short");
+                position++;
+                return parseIntegerLiteral("unsigned short");
             case 'i':
-                _position++;
-                return ParseIntegerLiteral("");
+                position++;
+                return parseIntegerLiteral("");
             case 'j':
-                _position++;
-                return ParseIntegerLiteral("u");
+                position++;
+                return parseIntegerLiteral("u");
             case 'l':
-                _position++;
-                return ParseIntegerLiteral("l");
+                position++;
+                return parseIntegerLiteral("l");
             case 'm':
-                _position++;
-                return ParseIntegerLiteral("ul");
+                position++;
+                return parseIntegerLiteral("ul");
             case 'x':
-                _position++;
-                return ParseIntegerLiteral("ll");
+                position++;
+                return parseIntegerLiteral("ll");
             case 'y':
-                _position++;
-                return ParseIntegerLiteral("ull");
+                position++;
+                return parseIntegerLiteral("ull");
             case 'n':
-                _position++;
-                return ParseIntegerLiteral("__int128");
+                position++;
+                return parseIntegerLiteral("__int128");
             case 'o':
-                _position++;
-                return ParseIntegerLiteral("unsigned __int128");
+                position++;
+                return parseIntegerLiteral("unsigned __int128");
             case 'd':
             case 'e':
             case 'f':
                 // TODO: floating literal
                 return null;
             case '_':
-                if (ConsumeIf("_Z")) {
-                    BaseNode encoding = ParseEncoding();
-                    if (encoding != null && ConsumeIf("E")) {
+                if (consumeIf("_Z")) {
+                    BaseNode encoding = parseEncoding();
+                    if (encoding != null && consumeIf("E")) {
                         return encoding;
                     }
                 }
@@ -2247,13 +2228,13 @@ public class Demangler {
             case 'T':
                 return null;
             default:
-                BaseNode type = ParseType();
+                BaseNode type = parseType();
                 if (type == null) {
                     return null;
                 }
 
-                String number = ParseNumber();
-                if (number == null || number.length() == 0 || !ConsumeIf("E")) {
+                String number = parseNumber();
+                if (number == null || number.length() == 0 || !consumeIf("E")) {
                     return null;
                 }
 
@@ -2263,17 +2244,17 @@ public class Demangler {
 
     // <decltype>  ::= Dt <expression> E  # decltype of an id-expression or class member access (C++0x)
     //             ::= DT <expression> E  # decltype of an expression (C++0x)
-    private BaseNode ParseDecltype() {
-        if (!ConsumeIf("D") || (!ConsumeIf("t") && !ConsumeIf("T"))) {
+    private BaseNode parseDecltype() {
+        if (!consumeIf("D") || (!consumeIf("t") && !consumeIf("T"))) {
             return null;
         }
 
-        BaseNode expression = ParseExpression();
+        BaseNode expression = parseExpression();
         if (expression == null) {
             return null;
         }
 
-        if (!ConsumeIf("E")) {
+        if (!consumeIf("E")) {
             return null;
         }
 
@@ -2284,20 +2265,20 @@ public class Demangler {
     //                           ::= T <parameter-2 non-negative number> _
     // <template-template-param> ::= <template-param>
     //                           ::= <substitution>
-    private BaseNode ParseTemplateParam() {
-        if (!ConsumeIf("T")) {
+    private BaseNode parseTemplateParam() {
+        if (!consumeIf("T")) {
             return null;
         }
 
         int index = 0;
-        if (!ConsumeIf("_")) {
-            index = ParsePositiveNumber();
+        if (!consumeIf("_")) {
+            index = parsePositiveNumber();
             if (index < 0) {
                 return null;
             }
 
             index++;
-            if (!ConsumeIf("_")) {
+            if (!consumeIf("_")) {
                 return null;
             }
         }
@@ -2306,50 +2287,48 @@ public class Demangler {
         // if (IsParsingLambdaParameters)
         //    return new ast.NameType("auto");
 
-        if (_canForwardTemplateReference) {
-            ForwardTemplateReference forwardTemplateReference = new ForwardTemplateReference(index);
-            _forwardTemplateReferenceList.add(forwardTemplateReference);
-            return forwardTemplateReference;
+        if (canForwardTemplateReference) {
+            return new ForwardTemplateReference();
         }
-        if (index >= _templateParamList.size()) {
+        if (index >= templateParamList.size()) {
             return null;
         }
 
-        return _templateParamList.get(index);
+        return templateParamList.get(index);
     }
 
     // <template-args> ::= I <template-arg>+ E
-    private BaseNode ParseTemplateArguments() {
-        return ParseTemplateArguments(false);
+    private BaseNode parseTemplateArguments() {
+        return parseTemplateArguments(false);
     }
 
     // <template-args> ::= I <template-arg>+ E
-    private BaseNode ParseTemplateArguments(boolean hasContext) {
-        if (!ConsumeIf("I")) {
+    private BaseNode parseTemplateArguments(boolean hasContext) {
+        if (!consumeIf("I")) {
             return null;
         }
 
         if (hasContext) {
-            _templateParamList.clear();
+            templateParamList.clear();
         }
 
-        List<BaseNode> args = new ArrayList<BaseNode>();
-        while (!ConsumeIf("E")) {
+        List<BaseNode> args = new ArrayList<>();
+        while (!consumeIf("E")) {
             if (hasContext) {
-                List<BaseNode> templateParamListTemp = new ArrayList<BaseNode>(_templateParamList);
-                BaseNode templateArgument = ParseTemplateArgument();
-                _templateParamList = templateParamListTemp;
+                List<BaseNode> templateParamListTemp = new ArrayList<>(templateParamList);
+                BaseNode templateArgument = parseTemplateArgument();
+                templateParamList = templateParamListTemp;
                 if (templateArgument == null) {
                     return null;
                 }
 
                 args.add(templateArgument);
-                if (templateArgument.Type == NodeType.PackedTemplateArgument) {
-                    templateArgument = new PackedTemplateParameter(((NodeArray) templateArgument).Nodes);
+                if (templateArgument.type == NodeType.PackedTemplateArgument) {
+                    templateArgument = new PackedTemplateParameter(((NodeArray) templateArgument).nodes);
                 }
-                _templateParamList.add(templateArgument);
+                templateParamList.add(templateArgument);
             } else {
-                BaseNode templateArgument = ParseTemplateArgument();
+                BaseNode templateArgument = parseTemplateArgument();
                 if (templateArgument == null) {
                     return null;
                 }
@@ -2365,26 +2344,26 @@ public class Demangler {
     //                ::= X <expression> E                                   # expression
     //                ::= <expr-primary>                                     # simple expressions
     //                ::= J <template-arg>* E                                # argument pack
-    private BaseNode ParseTemplateArgument() {
-        switch (Peek()) {
+    private BaseNode parseTemplateArgument() {
+        switch (peek()) {
             // X <expression> E
             case 'X':
-                _position++;
-                BaseNode expression = ParseExpression();
-                if (expression == null || !ConsumeIf("E")) {
+                position++;
+                BaseNode expression = parseExpression();
+                if (expression == null || !consumeIf("E")) {
                     return null;
                 }
 
                 return expression;
             // <expr-primary>
             case 'L':
-                return ParseExpressionPrimary();
+                return parseExpressionPrimary();
             // J <template-arg>* E
             case 'J':
-                _position++;
-                List<BaseNode> templateArguments = new ArrayList<BaseNode>();
-                while (!ConsumeIf("E")) {
-                    BaseNode templateArgument = ParseTemplateArgument();
+                position++;
+                List<BaseNode> templateArguments = new ArrayList<>();
+                while (!consumeIf("E")) {
+                    BaseNode templateArgument = parseTemplateArgument();
                     if (templateArgument == null) {
                         return null;
                     }
@@ -2394,51 +2373,51 @@ public class Demangler {
                 return new NodeArray(templateArguments, NodeType.PackedTemplateArgument);
             // <type>
             default:
-                return ParseType();
+                return parseType();
         }
     }
 
-    class NameParserContext {
-        public CvType Cv;
-        public SimpleReferenceType Ref;
-        public boolean FinishWithTemplateArguments;
-        public boolean CtorDtorConversion;
+    class NameparserContext {
+        CvType cvType;
+        SimpleReferenceType ref;
+        boolean finishWithTemplateArguments;
+        boolean ctorDtorConversion;
     }
 
 
     //   <unresolved-type> ::= <template-param> [ <template-args> ]            # T:: or T<X,Y>::
     //                     ::= <decltype>                                      # decltype(p)::
     //                     ::= <substitution>
-    private BaseNode ParseUnresolvedType() {
-        if (Peek() == 'T') {
-            BaseNode templateParam = ParseTemplateParam();
+    private BaseNode parseUnresolvedType() {
+        if (peek() == 'T') {
+            BaseNode templateParam = parseTemplateParam();
             if (templateParam == null) {
                 return null;
             }
 
-            _substitutionList.add(templateParam);
+            substitutionList.add(templateParam);
             return templateParam;
-        } else if (Peek() == 'D') {
-            BaseNode declType = ParseDecltype();
+        } else if (peek() == 'D') {
+            BaseNode declType = parseDecltype();
             if (declType == null) {
                 return null;
             }
 
-            _substitutionList.add(declType);
+            substitutionList.add(declType);
             return declType;
         }
-        return ParseSubstitution();
+        return parseSubstitution();
     }
 
     // <simple-id> ::= <source-name> [ <template-args> ]
-    private BaseNode ParseSimpleId() {
-        BaseNode sourceName = ParseSourceName();
+    private BaseNode parseSimpleId() {
+        BaseNode sourceName = parseSourceName();
         if (sourceName == null) {
             return null;
         }
 
-        if (Peek() == 'I') {
-            BaseNode templateArguments = ParseTemplateArguments();
+        if (peek() == 'I') {
+            BaseNode templateArguments = parseTemplateArguments();
             if (templateArguments == null) {
                 return null;
             }
@@ -2450,12 +2429,12 @@ public class Demangler {
 
     //  <destructor-name> ::= <unresolved-type>                               # e.g., ~T or ~decltype(f())
     //                    ::= <simple-id>                                     # e.g., ~A<2*N>
-    private BaseNode ParseDestructorName() {
+    private BaseNode parseDestructorName() {
         BaseNode node;
-        if (Character.isDigit(Peek())) {
-            node = ParseSimpleId();
+        if (Character.isDigit(peek())) {
+            node = parseSimpleId();
         } else {
-            node = ParseUnresolvedType();
+            node = parseUnresolvedType();
         }
         if (node == null) {
             return null;
@@ -2471,21 +2450,21 @@ public class Demangler {
     //                         ::= on <operator-name> <template-args>         # unresolved operator template-id
     //                         ::= dn <destructor-name>                       # destructor or pseudo-destructor;
     //                                                                        # e.g. ~X or ~X<N-1>
-    private BaseNode ParseBaseUnresolvedName() {
-        if (Character.isDigit(Peek())) {
-            return ParseSimpleId();
-        } else if (ConsumeIf("dn")) {
-            return ParseDestructorName();
+    private BaseNode parseBaseUnresolvedName() {
+        if (Character.isDigit(peek())) {
+            return parseSimpleId();
+        } else if (consumeIf("dn")) {
+            return parseDestructorName();
         }
 
-        ConsumeIf("on");
-        BaseNode operatorName = ParseOperatorName(null);
+        consumeIf("on");
+        BaseNode operatorName = parseOperatorName(null);
         if (operatorName == null) {
             return null;
         }
 
-        if (Peek() == 'I') {
-            BaseNode templateArguments = ParseTemplateArguments();
+        if (peek() == 'I') {
+            BaseNode templateArguments = parseTemplateArguments();
             if (templateArguments == null) {
                 return null;
             }
@@ -2495,49 +2474,39 @@ public class Demangler {
         return operatorName;
     }
 
-    private BaseNode ParseUnresolvedName() {
-        return ParseUnresolvedName(null);
-    }
-
     // <unresolved-name> ::= [gs] <base-unresolved-name>                     # x or (with "gs") ::x
     //                   ::= sr <unresolved-type> <base-unresolved-name>     # T::x / decltype(p)::x
     //                   ::= srN <unresolved-type> <unresolved-qualifier-level>+ E <base-unresolved-name>
     //                                                                       # T::N::x /decltype(p)::N::x
     //                   ::= [gs] sr <unresolved-qualifier-level>+ E <base-unresolved-name>
     //                                                                       # A::x, N::y, A<T>::z; "gs" means leading "::"
-    private BaseNode ParseUnresolvedName(NameParserContext context) {
+    private BaseNode parseUnresolvedName() {
         BaseNode result = null;
-        if (ConsumeIf("srN")) {
-            result = ParseUnresolvedType();
+        if (consumeIf("srN")) {
+            result = parseUnresolvedType();
             if (result == null) {
                 return null;
             }
 
-            if (Peek() == 'I') {
-                BaseNode templateArguments = ParseTemplateArguments();
+            if (peek() == 'I') {
+                BaseNode templateArguments = parseTemplateArguments();
                 if (templateArguments == null) {
                     return null;
                 }
 
                 result = new NameTypeWithTemplateArguments(result, templateArguments);
-                if (result == null) {
-                    return null;
-                }
             }
 
-            while (!ConsumeIf("E")) {
-                BaseNode simpleId = ParseSimpleId();
+            while (!consumeIf("E")) {
+                BaseNode simpleId = parseSimpleId();
                 if (simpleId == null) {
                     return null;
                 }
 
                 result = new QualifiedName(result, simpleId);
-                if (result == null) {
-                    return null;
-                }
             }
 
-            BaseNode baseName = ParseBaseUnresolvedName();
+            BaseNode baseName = parseBaseUnresolvedName();
             if (baseName == null) {
                 return null;
             }
@@ -2545,11 +2514,11 @@ public class Demangler {
             return new QualifiedName(result, baseName);
         }
 
-        boolean isGlobal = ConsumeIf("gs");
+        boolean isGlobal = consumeIf("gs");
 
         // ::= [gs] <base-unresolved-name>                     # x or (with "gs") ::x
-        if (!ConsumeIf("sr")) {
-            result = ParseBaseUnresolvedName();
+        if (!consumeIf("sr")) {
+            result = parseBaseUnresolvedName();
             if (result == null) {
                 return null;
             }
@@ -2562,9 +2531,9 @@ public class Demangler {
         }
 
         // ::= [gs] sr <unresolved-qualifier-level>+ E <base-unresolved-name>
-        if (Character.isDigit(Peek())) {
+        if (Character.isDigit(peek())) {
             do {
-                BaseNode qualifier = ParseSimpleId();
+                BaseNode qualifier = parseSimpleId();
                 if (qualifier == null) {
                     return null;
                 }
@@ -2577,36 +2546,26 @@ public class Demangler {
                     result = qualifier;
                 }
 
-                if (result == null) {
-                    return null;
-                }
-            } while (!ConsumeIf("E"));
+            } while (!consumeIf("E"));
         }
         // ::= sr <unresolved-type> [template-args] <base-unresolved-name>     # T::x / decltype(p)::x
         else {
-            result = ParseUnresolvedType();
+            result = parseUnresolvedType();
             if (result == null) {
                 return null;
             }
 
-            if (Peek() == 'I') {
-                BaseNode templateArguments = ParseTemplateArguments();
+            if (peek() == 'I') {
+                BaseNode templateArguments = parseTemplateArguments();
                 if (templateArguments == null) {
                     return null;
                 }
 
                 result = new NameTypeWithTemplateArguments(result, templateArguments);
-                if (result == null) {
-                    return null;
-                }
             }
         }
 
-        if (result == null) {
-            return null;
-        }
-
-        BaseNode baseUnresolvedName = ParseBaseUnresolvedName();
+        BaseNode baseUnresolvedName = parseBaseUnresolvedName();
         if (baseUnresolvedName == null) {
             return null;
         }
@@ -2616,187 +2575,187 @@ public class Demangler {
 
     //    <unscoped-name> ::= <unqualified-name>
     //                    ::= St <unqualified-name>   # ::std::
-    private BaseNode ParseUnscopedName(NameParserContext context) {
-        if (ConsumeIf("St")) {
-            BaseNode unresolvedName = ParseUnresolvedName(context);
+    private BaseNode parseUnscopedName() {
+        if (consumeIf("St")) {
+            BaseNode unresolvedName = parseUnresolvedName();
             if (unresolvedName == null) {
                 return null;
             }
 
             return new StdQualifiedName(unresolvedName);
         }
-        return ParseUnresolvedName(context);
+        return parseUnresolvedName();
     }
 
     // <nested-name> ::= N [<CV-qualifiers>] [<ref-qualifier>] <prefix (TODO)> <unqualified-name> E
     //               ::= N [<CV-qualifiers>] [<ref-qualifier>] <template-prefix (TODO)> <template-args (TODO)> E
-    private BaseNode ParseNestedName(NameParserContext context) {
+    private BaseNode parseNestedName(NameparserContext context) {
         // Impossible in theory
-        if (Consume() != 'N') {
+        if (consume() != 'N') {
             return null;
         }
 
         BaseNode result = null;
-        CvType cv = new CvType(ParseCvQualifiers(), null);
+        CvType cv = new CvType(parseCvQualifiers(), null);
         if (context != null) {
-            context.Cv = cv;
+            context.cvType = cv;
         }
 
-        SimpleReferenceType Ref = ParseRefQualifiers();
+        SimpleReferenceType ref = parseRefQualifiers();
         if (context != null) {
-            context.Ref = Ref;
+            context.ref = ref;
         }
 
-        if (ConsumeIf("St")) {
+        if (consumeIf("St")) {
             result = new NameType("std");
         }
 
-        while (!ConsumeIf("E")) {
+        while (!consumeIf("E")) {
             // <data-member-prefix> end
-            if (ConsumeIf("M")) {
+            if (consumeIf("M")) {
                 if (result == null) {
                     return null;
                 }
 
                 continue;
             }
-            char c = Peek();
+            char c = peek();
 
             // TODO: template args
             if (c == 'T') {
-                BaseNode templateParam = ParseTemplateParam();
+                BaseNode templateParam = parseTemplateParam();
                 if (templateParam == null) {
                     return null;
                 }
 
-                result = CreateNameNode(result, templateParam, context);
-                _substitutionList.add(result);
+                result = createNameNode(result, templateParam, context);
+                substitutionList.add(result);
                 continue;
             }
 
             // <template-prefix> <template-args>
             if (c == 'I') {
-                BaseNode templateArgument = ParseTemplateArguments(context != null);
+                BaseNode templateArgument = parseTemplateArguments(context != null);
                 if (templateArgument == null || result == null) {
                     return null;
                 }
 
                 result = new NameTypeWithTemplateArguments(result, templateArgument);
                 if (context != null) {
-                    context.FinishWithTemplateArguments = true;
+                    context.finishWithTemplateArguments = true;
                 }
 
-                _substitutionList.add(result);
+                substitutionList.add(result);
                 continue;
             }
 
             // <decltype>
-            if (c == 'D' && (Peek(1) == 't' || Peek(1) == 'T')) {
-                BaseNode decltype = ParseDecltype();
+            if (c == 'D' && (peek(1) == 't' || peek(1) == 'T')) {
+                BaseNode decltype = parseDecltype();
                 if (decltype == null) {
                     return null;
                 }
 
-                result = CreateNameNode(result, decltype, context);
-                _substitutionList.add(result);
+                result = createNameNode(result, decltype, context);
+                substitutionList.add(result);
                 continue;
             }
 
             // <substitution>
-            if (c == 'S' && Peek(1) != 't') {
-                BaseNode substitution = ParseSubstitution();
+            if (c == 'S' && peek(1) != 't') {
+                BaseNode substitution = parseSubstitution();
                 if (substitution == null) {
                     return null;
                 }
 
-                result = CreateNameNode(result, substitution, context);
+                result = createNameNode(result, substitution, context);
                 if (result != substitution) {
-                    _substitutionList.add(substitution);
+                    substitutionList.add(substitution);
                 }
 
                 continue;
             }
 
-            // <ctor-dtor-name> of ParseUnqualifiedName
-            if (c == 'C' || (c == 'D' && Peek(1) != 'C')) {
+            // <ctor-dtor-name> of parseUnqualifiedName
+            if (c == 'C' || (c == 'D' && peek(1) != 'C')) {
                 // We cannot have nothing before this
                 if (result == null) {
                     return null;
                 }
 
-                BaseNode ctOrDtorName = ParseCtorDtorName(context, result);
+                BaseNode ctOrDtorName = parseCtorDtorName(context, result);
 
                 if (ctOrDtorName == null) {
                     return null;
                 }
 
-                result = CreateNameNode(result, ctOrDtorName, context);
+                result = createNameNode(result, ctOrDtorName, context);
 
                 // TODO: ABI Tags (before)
                 if (result == null) {
                     return null;
                 }
 
-                _substitutionList.add(result);
+                substitutionList.add(result);
                 continue;
             }
 
-            BaseNode unqualifiedName = ParseUnqualifiedName(context);
+            BaseNode unqualifiedName = parseUnqualifiedName(context);
             if (unqualifiedName == null) {
                 return null;
             }
-            result = CreateNameNode(result, unqualifiedName, context);
+            result = createNameNode(result, unqualifiedName, context);
 
-            _substitutionList.add(result);
+            substitutionList.add(result);
         }
-        if (result == null || _substitutionList.size() == 0) {
+        if (result == null || substitutionList.size() == 0) {
             return null;
         }
 
-        _substitutionList.remove(_substitutionList.size() - 1);
+        substitutionList.remove(substitutionList.size() - 1);
         return result;
     }
 
     //   <discriminator> ::= _ <non-negative number>      # when number < 10
     //                   ::= __ <non-negative number> _   # when number >= 10
-    private void ParseDiscriminator() {
-        if (Count() == 0) {
+    private void parseDiscriminator() {
+        if (count() == 0) {
             return;
         }
         // We ignore the discriminator, we don't need it.
-        if (ConsumeIf("_")) {
-            ConsumeIf("_");
-            while (Character.isDigit(Peek()) && Count() != 0) {
-                Consume();
+        if (consumeIf("_")) {
+            consumeIf("_");
+            while (Character.isDigit(peek()) && count() != 0) {
+                consume();
             }
-            ConsumeIf("_");
+            consumeIf("_");
         }
     }
 
     //   <local-name> ::= Z <function encoding> E <entity name> [<discriminator>]
     //                ::= Z <function encoding> E s [<discriminator>]
     //                ::= Z <function encoding> Ed [ <parameter number> ] _ <entity name>
-    private BaseNode ParseLocalName(NameParserContext context) {
-        if (!ConsumeIf("Z")) {
+    private BaseNode parseLocalName(NameparserContext context) {
+        if (!consumeIf("Z")) {
             return null;
         }
 
-        BaseNode encoding = ParseEncoding();
-        if (encoding == null || !ConsumeIf("E")) {
+        BaseNode encoding = parseEncoding();
+        if (encoding == null || !consumeIf("E")) {
             return null;
         }
 
         BaseNode entityName;
-        if (ConsumeIf("s")) {
-            ParseDiscriminator();
+        if (consumeIf("s")) {
+            parseDiscriminator();
             return new LocalName(encoding, new NameType("String literal"));
-        } else if (ConsumeIf("d")) {
-            ParseNumber(true);
-            if (!ConsumeIf("_")) {
+        } else if (consumeIf("d")) {
+            parseNumber(true);
+            if (!consumeIf("_")) {
                 return null;
             }
 
-            entityName = ParseName(context);
+            entityName = parseName(context);
             if (entityName == null) {
                 return null;
             }
@@ -2804,70 +2763,70 @@ public class Demangler {
             return new LocalName(encoding, entityName);
         }
 
-        entityName = ParseName(context);
+        entityName = parseName(context);
         if (entityName == null) {
             return null;
         }
 
-        ParseDiscriminator();
+        parseDiscriminator();
         return new LocalName(encoding, entityName);
     }
 
-    private BaseNode ParseName() {
-        return ParseName(null);
+    private BaseNode parseName() {
+        return parseName(null);
     }
 
     // <name> ::= <nested-name>
     //        ::= <unscoped-name>
     //        ::= <unscoped-template-name> <template-args>
     //        ::= <local-name>  # See Scope Encoding below (TODO)
-    private BaseNode ParseName(NameParserContext context) {
-        ConsumeIf("L");
+    private BaseNode parseName(NameparserContext context) {
+        consumeIf("L");
 
-        if (Peek() == 'N') {
-            return ParseNestedName(context);
+        if (peek() == 'N') {
+            return parseNestedName(context);
         }
 
-        if (Peek() == 'Z') {
-            return ParseLocalName(context);
+        if (peek() == 'Z') {
+            return parseLocalName(context);
         }
 
-        if (Peek() == 'S' && Peek(1) != 't') {
-            BaseNode substitution = ParseSubstitution();
+        if (peek() == 'S' && peek(1) != 't') {
+            BaseNode substitution = parseSubstitution();
             if (substitution == null) {
                 return null;
             }
 
-            if (Peek() != 'I') {
+            if (peek() != 'I') {
                 return null;
             }
 
-            BaseNode templateArguments = ParseTemplateArguments(context != null);
+            BaseNode templateArguments = parseTemplateArguments(context != null);
             if (templateArguments == null) {
                 return null;
             }
 
             if (context != null) {
-                context.FinishWithTemplateArguments = true;
+                context.finishWithTemplateArguments = true;
             }
 
             return new NameTypeWithTemplateArguments(substitution, templateArguments);
         }
 
-        BaseNode result = ParseUnscopedName(context);
+        BaseNode result = parseUnscopedName();
         if (result == null) {
             return null;
         }
 
-        if (Peek() == 'I') {
-            _substitutionList.add(result);
-            BaseNode templateArguments = ParseTemplateArguments(context != null);
+        if (peek() == 'I') {
+            substitutionList.add(result);
+            BaseNode templateArguments = parseTemplateArguments(context != null);
             if (templateArguments == null) {
                 return null;
             }
 
             if (context != null) {
-                context.FinishWithTemplateArguments = true;
+                context.finishWithTemplateArguments = true;
             }
 
             return new NameTypeWithTemplateArguments(result, templateArguments);
@@ -2876,88 +2835,88 @@ public class Demangler {
         return result;
     }
 
-    private boolean IsEncodingEnd() {
-        char c = Peek();
-        return Count() == 0 || c == 'E' || c == '.' || c == '_';
+    private boolean isEncodingEnd() {
+        char c = peek();
+        return count() == 0 || c == 'E' || c == '.' || c == '_';
     }
 
     // <encoding> ::= <function name> <bare-function-type>
     //            ::= <data name>
     //            ::= <special-name>
-    private BaseNode ParseEncoding() {
-        NameParserContext context = new NameParserContext();
-        if (Peek() == 'T' || (Peek() == 'G' && Peek(1) == 'V')) {
-            return ParseSpecialName(context);
+    private BaseNode parseEncoding() {
+        NameparserContext context = new NameparserContext();
+        if (peek() == 'T' || (peek() == 'G' && peek(1) == 'V')) {
+            return parseSpecialName(context);
         }
 
-        BaseNode name = ParseName(context);
+        BaseNode name = parseName(context);
         if (name == null) {
             return null;
         }
 
         // TODO: compute template refs here
 
-        if (IsEncodingEnd()) {
+        if (isEncodingEnd()) {
             return name;
         }
 
         // TODO: Ua9enable_ifI
 
         BaseNode returnType = null;
-        if (!context.CtorDtorConversion && context.FinishWithTemplateArguments) {
-            returnType = ParseType();
+        if (!context.ctorDtorConversion && context.finishWithTemplateArguments) {
+            returnType = parseType();
             if (returnType == null) {
                 return null;
             }
         }
 
-        if (ConsumeIf("v")) {
-            return new EncodedFunction(name, null, context.Cv, context.Ref, null, returnType);
+        if (consumeIf("v")) {
+            return new EncodedFunction(name, null, context.cvType, context.ref, null, returnType);
         }
 
-        List<BaseNode> Params = new ArrayList<BaseNode>();
+        List<BaseNode> params = new ArrayList<>();
 
         // backup because that can be destroyed by parseType
-        CvType cv = context.Cv;
-        SimpleReferenceType Ref = context.Ref;
+        CvType cv = context.cvType;
+        SimpleReferenceType ref = context.ref;
 
-        while (!IsEncodingEnd()) {
-            BaseNode param = ParseType();
+        while (!isEncodingEnd()) {
+            BaseNode param = parseType();
             if (param == null) {
                 return null;
             }
 
-            Params.add(param);
+            params.add(param);
         }
 
-        return new EncodedFunction(name, new NodeArray(Params), cv, Ref, null, returnType);
+        return new EncodedFunction(name, new NodeArray(params), cv, ref, null, returnType);
     }
 
     // <mangled-name> ::= _Z <encoding>
     //                ::= <type>
-    private BaseNode Parse() {
-        if (ConsumeIf("_Z")) {
-            BaseNode encoding = ParseEncoding();
-            if (encoding != null && Count() == 0) {
+    private BaseNode parse() {
+        if (consumeIf("_Z")) {
+            BaseNode encoding = parseEncoding();
+            if (encoding != null && count() == 0) {
                 return encoding;
             }
             return null;
         } else {
-            BaseNode type = ParseType();
-            if (type != null && Count() == 0) {
+            BaseNode type = parseType();
+            if (type != null && count() == 0) {
                 return type;
             }
             return null;
         }
     }
 
-    public static String Parse(String originalMangled) {
+    public static String parse(String originalMangled) {
         Demangler instance = new Demangler(originalMangled);
-        BaseNode resNode = instance.Parse();
+        BaseNode resNode = instance.parse();
 
         if (resNode != null) {
             StringWriter writer = new StringWriter();
-            resNode.Print(writer);
+            resNode.print(writer);
             return writer.toString();
         }
 

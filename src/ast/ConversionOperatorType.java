@@ -8,8 +8,8 @@ public class ConversionOperatorType extends ParentNode {
     }
 
     @Override
-    public void PrintLeft(StringWriter writer) {
+    public void printLeft(StringWriter writer) {
         writer.write("operator ");
-        child.Print(writer);
+        child.print(writer);
     }
 }

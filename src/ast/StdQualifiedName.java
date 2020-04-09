@@ -8,8 +8,8 @@ public class StdQualifiedName extends ParentNode {
     }
 
     @Override
-    public void PrintLeft(StringWriter writer) {
+    public void printLeft(StringWriter writer) {
         writer.write("std::");
-        child.Print(writer);
+        child.print(writer);
     }
 }

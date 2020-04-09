@@ -8,9 +8,9 @@ public class LiteralOperator extends ParentNode {
     }
 
     @Override
-    public void PrintLeft(StringWriter writer) {
+    public void printLeft(StringWriter writer) {
         writer.write("operator \"");
-        child.PrintLeft(writer);
+        child.printLeft(writer);
         writer.write("\"");
     }
 }

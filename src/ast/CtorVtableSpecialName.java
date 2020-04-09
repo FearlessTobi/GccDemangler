@@ -3,20 +3,20 @@ package ast;
 import java.io.StringWriter;
 
 public class CtorVtableSpecialName extends BaseNode {
-    private BaseNode _firstType;
-    private BaseNode _secondType;
+    private final BaseNode firstType;
+    private final BaseNode secondType;
 
     public CtorVtableSpecialName(BaseNode firstType, BaseNode secondType) {
         super(NodeType.CtorVtableSpecialName);
-        _firstType = firstType;
-        _secondType = secondType;
+        this.firstType = firstType;
+        this.secondType = secondType;
     }
 
     @Override
-    public void PrintLeft(StringWriter writer) {
+    public void printLeft(StringWriter writer) {
         writer.write("construction vtable for ");
-        _firstType.Print(writer);
+        firstType.print(writer);
         writer.write("-in-");
-        _secondType.Print(writer);
+        secondType.print(writer);
     }
 }

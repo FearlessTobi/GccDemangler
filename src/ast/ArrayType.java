@@ -3,58 +3,58 @@ package ast;
 import java.io.StringWriter;
 
 public class ArrayType extends BaseNode {
-    private BaseNode _base;
-    private BaseNode _dimensionExpression;
-    private String _dimensionString;
+    private final BaseNode base;
+    private BaseNode dimensionExpression;
+    private String dimensionString;
 
-    public ArrayType(BaseNode Base) {
+    public ArrayType(BaseNode base) {
         super(NodeType.ArrayType);
-        _base = Base;
-        _dimensionExpression = null;
+        this.base = base;
+        dimensionExpression = null;
     }
 
-    public ArrayType(BaseNode Base, BaseNode dimensionExpression) {
+    public ArrayType(BaseNode base, BaseNode dimensionExpression) {
         super(NodeType.ArrayType);
-        _base = Base;
-        _dimensionExpression = dimensionExpression;
+        this.base = base;
+        this.dimensionExpression = dimensionExpression;
     }
 
-    public ArrayType(BaseNode Base, String dimensionString) {
+    public ArrayType(BaseNode base, String dimensionString) {
         super(NodeType.ArrayType);
-        _base = Base;
-        _dimensionString = dimensionString;
+        this.base = base;
+        this.dimensionString = dimensionString;
     }
 
     @Override
-    public boolean HasRightPart() {
+    public boolean hasRightPart() {
         return true;
     }
 
     @Override
-    public boolean IsArray() {
+    public boolean isArray() {
         return true;
     }
 
     @Override
-    public void PrintLeft(StringWriter writer) {
-        _base.PrintLeft(writer);
+    public void printLeft(StringWriter writer) {
+        base.printLeft(writer);
     }
 
     @Override
-    public void PrintRight(StringWriter writer) {
+    public void printRight(StringWriter writer) {
         // FIXME: detect if previous char was a ].
         writer.write(" ");
 
         writer.write("[");
 
-        if (_dimensionString != null) {
-            writer.write(_dimensionString);
-        } else if (_dimensionExpression != null) {
-            _dimensionExpression.Print(writer);
+        if (dimensionString != null) {
+            writer.write(dimensionString);
+        } else if (dimensionExpression != null) {
+            dimensionExpression.print(writer);
         }
 
         writer.write("]");
 
-        _base.PrintRight(writer);
+        base.printRight(writer);
     }
 }

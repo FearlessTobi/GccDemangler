@@ -3,21 +3,21 @@ package ast;
 import java.io.StringWriter;
 
 public class ArraySubscriptingExpression extends BaseNode {
-    private BaseNode _leftNode;
-    private BaseNode _subscript;
+    private final BaseNode leftNode;
+    private final BaseNode subscript;
 
     public ArraySubscriptingExpression(BaseNode leftNode, BaseNode subscript) {
         super(NodeType.ArraySubscriptingExpression);
-        _leftNode = leftNode;
-        _subscript = subscript;
+        this.leftNode = leftNode;
+        this.subscript = subscript;
     }
 
     @Override
-    public void PrintLeft(StringWriter writer) {
+    public void printLeft(StringWriter writer) {
         writer.write("(");
-        _leftNode.Print(writer);
+        leftNode.print(writer);
         writer.write(")[");
-        _subscript.Print(writer);
+        subscript.print(writer);
         writer.write("]");
     }
 }

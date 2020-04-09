@@ -3,46 +3,46 @@ package ast;
 import java.io.StringWriter;
 
 public class NewExpression extends BaseNode {
-    private NodeArray _expressions;
-    private BaseNode _typeNode;
-    private NodeArray _initializers;
+    private final NodeArray expressions;
+    private final BaseNode typeNode;
+    private final NodeArray initializers;
 
-    private boolean _isGlobal;
-    private boolean _isArrayExpression;
+    private final boolean isGlobal;
+    private final boolean isArrayExpression;
 
     public NewExpression(NodeArray expressions, BaseNode typeNode, NodeArray initializers, boolean isGlobal, boolean isArrayExpression) {
         super(NodeType.NewExpression);
-        _expressions = expressions;
-        _typeNode = typeNode;
-        _initializers = initializers;
+        this.expressions = expressions;
+        this.typeNode = typeNode;
+        this.initializers = initializers;
 
-        _isGlobal = isGlobal;
-        _isArrayExpression = isArrayExpression;
+        this.isGlobal = isGlobal;
+        this.isArrayExpression = isArrayExpression;
     }
 
     @Override
-    public void PrintLeft(StringWriter writer) {
-        if (_isGlobal) {
+    public void printLeft(StringWriter writer) {
+        if (isGlobal) {
             writer.write("::operator ");
         }
 
         writer.write("new ");
 
-        if (_isArrayExpression) {
+        if (isArrayExpression) {
             writer.write("[] ");
         }
 
-        if (_expressions.Nodes.size() != 0) {
+        if (!expressions.nodes.isEmpty()) {
             writer.write("(");
-            _expressions.Print(writer);
+            expressions.print(writer);
             writer.write(")");
         }
 
-        _typeNode.Print(writer);
+        typeNode.print(writer);
 
-        if (_initializers.Nodes.size() != 0) {
+        if (!initializers.nodes.isEmpty()) {
             writer.write("(");
-            _initializers.Print(writer);
+            initializers.print(writer);
             writer.write(")");
         }
     }

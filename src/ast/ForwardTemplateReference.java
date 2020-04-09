@@ -4,31 +4,29 @@ import java.io.StringWriter;
 
 public class ForwardTemplateReference extends BaseNode {
     // TODO: Compute inside the Demangler
-    public BaseNode Reference;
-    private int _index;
+    private BaseNode reference;
 
-    public ForwardTemplateReference(int index) {
+    public ForwardTemplateReference() {
         super(NodeType.ForwardTemplateReference);
-        _index = index;
     }
 
     @Override
-    public String GetName() {
-        return Reference.GetName();
+    public String getName() {
+        return reference.getName();
     }
 
     @Override
-    public void PrintLeft(StringWriter writer) {
-        Reference.PrintLeft(writer);
+    public void printLeft(StringWriter writer) {
+        reference.printLeft(writer);
     }
 
     @Override
-    public void PrintRight(StringWriter writer) {
-        Reference.PrintRight(writer);
+    public void printRight(StringWriter writer) {
+        reference.printRight(writer);
     }
 
     @Override
-    public boolean HasRightPart() {
-        return Reference.HasRightPart();
+    public boolean hasRightPart() {
+        return reference.hasRightPart();
     }
 }

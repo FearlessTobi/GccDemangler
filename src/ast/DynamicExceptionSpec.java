@@ -8,9 +8,9 @@ public class DynamicExceptionSpec extends ParentNode {
     }
 
     @Override
-    public void PrintLeft(StringWriter writer) {
+    public void printLeft(StringWriter writer) {
         writer.write("throw(");
-        child.Print(writer);
+        child.print(writer);
         writer.write(")");
     }
 }

@@ -3,17 +3,17 @@ package ast;
 import java.io.StringWriter;
 
 public class ElaboratedType extends ParentNode {
-    private String _elaborated;
+    private final String elaborated;
 
     public ElaboratedType(String elaborated, BaseNode type) {
         super(NodeType.ElaboratedType, type);
-        _elaborated = elaborated;
+        this.elaborated = elaborated;
     }
 
     @Override
-    public void PrintLeft(StringWriter writer) {
-        writer.write(_elaborated);
+    public void printLeft(StringWriter writer) {
+        writer.write(elaborated);
         writer.write(" ");
-        child.Print(writer);
+        child.print(writer);
     }
 }
