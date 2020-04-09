@@ -1,3 +1,5 @@
+import de.fearlesstobi.demangler.Demangler;
+
 public class TestDemangler {
 
     public static void main(String[] args) {
